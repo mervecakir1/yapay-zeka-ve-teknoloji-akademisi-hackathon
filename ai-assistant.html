@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>AI Assistant | AI E-Commerce</title>
+
+  <!-- Bootstrap CSS -->
+  <link 
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" 
+    rel="stylesheet"
+  />
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+
+<body>
+
+  <!-- Navigation Menu -->
+  <nav class="navbar navbar-expand-xl navbar-dark bg-dark shadow-sm">
+    <div class="container">
+
+      <a class="navbar-brand fw-bold" href="index.html">
+        AI E-Commerce
+      </a>
+
+      <button 
+        class="navbar-toggler" 
+        type="button" 
+        data-bs-toggle="collapse" 
+        data-bs-target="#navbarNav"
+        aria-controls="navbarNav"
+        aria-expanded="false"
+        aria-label="Toggle navigation"
+      >
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto">
+
+          <li class="nav-item">
+            <a class="nav-link" href="index.html">Home</a>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link" href="dashboard.html">Dashboard</a>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link" href="products.html">Products</a>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link" href="orders.html">Orders</a>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link" href="inventory.html">Inventory</a>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link active" href="ai-assistant.html">AI Assistant</a>
+          </li>
+
+          <li class="nav-item">
+            <a class="btn btn-outline-light ms-lg-3 mt-2 mt-lg-0" href="login.html">
+              Logout
+            </a>
+          </li>
+
+        </ul>
+      </div>
+
+    </div>
+  </nav>
+
+  <!-- AI Assistant Content -->
+  <main class="container py-5">
+
+    <div class="page-header text-center">
+      <h1 class="fw-bold">AI Assistant</h1>
+      <p class="text-muted">
+        Ask questions about products, orders, inventory, and daily business operations.
+      </p>
+    </div>
+
+    <div class="row justify-content-center">
+      <div class="col-lg-8">
+
+        <div class="ai-box">
+
+          <h4 class="fw-bold mb-3">Ask a Question</h4>
+
+          <p class="text-muted">
+            This assistant uses backend data from the database to provide quick business-related answers.
+          </p>
+
+          <form id="aiAssistantForm">
+            <div class="mb-3">
+              <label for="aiQuestion" class="form-label">Your Question</label>
+              <input 
+                type="text" 
+                class="form-control" 
+                id="aiQuestion" 
+                placeholder="Example: Which products are low in stock?"
+                required
+              />
+            </div>
+
+            <div class="d-grid">
+              <button type="submit" class="btn btn-primary btn-lg">
+                Ask Assistant
+              </button>
+            </div>
+          </form>
+
+          <div id="aiAnswerBox" class="ai-answer d-none">
+            <h6 class="fw-bold">Assistant Answer</h6>
+            <p id="aiAnswerText" class="mb-0"></p>
+          </div>
+
+        </div>
+
+        <!-- Example Questions -->
+        <div class="card-box mt-4">
+          <h5 class="fw-bold mb-3">Example Questions</h5>
+
+          <div class="d-flex flex-wrap gap-2">
+            <button class="btn btn-outline-primary btn-sm example-question">
+              Which products are low in stock?
+            </button>
+
+            <button class="btn btn-outline-primary btn-sm example-question">
+              What is the status of order 128?
+            </button>
+
+            <button class="btn btn-outline-primary btn-sm example-question">
+              Give me today's order summary.
+            </button>
+
+            <button class="btn btn-outline-primary btn-sm example-question">
+              Give stock suggestions.
+            </button>
+
+            <button class="btn btn-outline-primary btn-sm example-question">
+              Prepare a customer message for order 128.
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="text-center py-4 bg-light mt-5">
+    <p class="mb-0 text-muted">
+      © 2026 AI-Supported SME E-Commerce Management System
+    </p>
+  </footer>
+
+  <!-- Bootstrap JS -->
+  <script 
+    src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js">
+  </script>
+
+  <!-- Custom JS -->
+  <script src="js/script.js"></script>
+
+</body>
+</html>

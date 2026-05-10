@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Register | AI E-Commerce</title>
+
+  <!-- Bootstrap CSS -->
+  <link 
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" 
+    rel="stylesheet"
+  />
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+
+<body>
+
+  <!-- Navigation Menu -->
+  <nav class="navbar navbar-expand-xl navbar-dark bg-dark shadow-sm">
+    <div class="container">
+
+      <a class="navbar-brand fw-bold" href="index.html">
+        AI E-Commerce
+      </a>
+
+      <button 
+        class="navbar-toggler" 
+        type="button" 
+        data-bs-toggle="collapse" 
+        data-bs-target="#navbarNav"
+        aria-controls="navbarNav"
+        aria-expanded="false"
+        aria-label="Toggle navigation"
+      >
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto">
+
+          <li class="nav-item">
+            <a class="nav-link" href="index.html">Home</a>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link" href="dashboard.html">Dashboard</a>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link" href="products.html">Products</a>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link" href="orders.html">Orders</a>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link" href="inventory.html">Inventory</a>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link" href="ai-assistant.html">AI Assistant</a>
+          </li>
+
+          <li class="nav-item">
+            <a class="btn btn-outline-light ms-lg-3 mt-2 mt-lg-0" href="login.html">
+              Login
+            </a>
+          </li>
+
+        </ul>
+      </div>
+
+    </div>
+  </nav>
+
+  <!-- Register Form -->
+  <main class="container">
+    <div class="form-card">
+
+      <div class="text-center mb-4">
+        <h2 class="fw-bold">Create Account</h2>
+        <p class="text-muted">
+          Register as an admin or business user to access the management dashboard.
+        </p>
+      </div>
+
+      <div id="registerSuccessMessage" class="alert alert-success d-none">
+        Account created successfully. User information is saved to the database.
+      </div>
+
+      <form id="registerForm">
+
+        <div class="mb-3">
+          <label for="fullName" class="form-label">Full Name</label>
+          <input 
+            type="text" 
+            class="form-control" 
+            id="fullName" 
+            placeholder="Enter your full name"
+            required
+          />
+        </div>
+
+        <div class="mb-3">
+          <label for="email" class="form-label">Email Address</label>
+          <input 
+            type="email" 
+            class="form-control" 
+            id="email" 
+            placeholder="Enter your email"
+            required
+          />
+        </div>
+
+        <div class="mb-3">
+          <label for="password" class="form-label">Password</label>
+          <input 
+            type="password" 
+            class="form-control" 
+            id="password" 
+            placeholder="Create a password"
+            required
+          />
+        </div>
+
+        <div class="mb-4">
+          <label for="role" class="form-label">Role</label>
+          <select class="form-select" id="role" required>
+            <option selected disabled value="">Select role</option>
+            <option>Admin</option>
+            <option>Business Owner</option>
+            <option>Sales Manager</option>
+            <option>Inventory Staff</option>
+          </select>
+        </div>
+
+        <div class="d-grid">
+          <button type="submit" class="btn btn-primary btn-lg">
+            Register
+          </button>
+        </div>
+
+        <p class="text-center mt-4 mb-0">
+          Already have an account?
+          <a href="login.html" class="text-decoration-none fw-bold">
+            Login
+          </a>
+        </p>
+
+      </form>
+
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="text-center py-4 bg-light mt-5">
+    <p class="mb-0 text-muted">
+      © 2026 AI-Supported SME E-Commerce Management System
+    </p>
+  </footer>
+
+  <!-- Bootstrap JS -->
+  <script 
+    src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js">
+  </script>
+
+  <!-- Custom JS -->
+  <script src="js/script.js"></script>
+
+</body>
+</html>

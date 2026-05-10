@@ -1,0 +1,287 @@
+/* ===============================
+   General Style
+================================ */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: Arial, Helvetica, sans-serif;
+  background-color: #f5f7fb;
+  color: #222;
+  margin: 0;
+}
+
+/* ===============================
+   Navbar
+================================ */
+
+.navbar-brand {
+  letter-spacing: 0.3px;
+}
+
+.navbar .nav-link {
+  font-weight: 500;
+}
+
+.navbar .nav-link.active {
+  color: #ffffff !important;
+}
+
+/* ===============================
+   Home Page
+================================ */
+
+.hero-section {
+  padding: 70px 0;
+}
+
+.min-vh-75 {
+  min-height: 75vh;
+}
+
+.hero-card {
+  background-color: #ffffff;
+  padding: 35px;
+  border-radius: 20px;
+  border: 1px solid #e9ecef;
+}
+
+.feature-item {
+  padding: 15px;
+  border-radius: 12px;
+  background-color: #f8f9fa;
+  margin-bottom: 15px;
+}
+
+.feature-item p {
+  margin-bottom: 0;
+  color: #6c757d;
+}
+
+/* ===============================
+   Page Header
+================================ */
+
+.page-header {
+  padding: 25px 0 10px;
+}
+
+.page-header h1 {
+  margin-bottom: 8px;
+}
+
+/* ===============================
+   Cards
+================================ */
+
+.card-box {
+  background-color: #ffffff;
+  border-radius: 18px;
+  padding: 25px;
+  border: 1px solid #e9ecef;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.04);
+  transition: 0.2s ease;
+}
+
+.card-box:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.07);
+}
+
+/* ===============================
+   Tables
+================================ */
+
+.table-responsive {
+  background-color: #ffffff;
+  border-radius: 16px;
+  padding: 15px;
+  border: 1px solid #e9ecef;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.04);
+}
+
+.table th {
+  font-size: 14px;
+  color: #495057;
+  white-space: nowrap;
+}
+
+.table td {
+  font-size: 14px;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+/* ===============================
+   Status Badges
+================================ */
+
+.status-badge {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.status-normal {
+  background-color: #d1e7dd;
+  color: #0f5132;
+}
+
+.status-critical {
+  background-color: #f8d7da;
+  color: #842029;
+}
+
+.status-pending {
+  background-color: #fff3cd;
+  color: #664d03;
+}
+
+.status-preparing {
+  background-color: #cff4fc;
+  color: #055160;
+}
+
+.status-completed {
+  background-color: #d1e7dd;
+  color: #0f5132;
+}
+
+.status-cancelled {
+  background-color: #f8d7da;
+  color: #842029;
+}
+
+/* ===============================
+   Forms
+================================ */
+
+.form-card {
+  max-width: 720px;
+  margin: 45px auto;
+  background-color: #ffffff;
+  padding: 35px;
+  border-radius: 20px;
+  border: 1px solid #e9ecef;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.05);
+}
+
+.form-control,
+.form-select {
+  padding: 12px;
+  border-radius: 10px;
+}
+
+.form-control:focus,
+.form-select:focus {
+  box-shadow: none;
+  border-color: #0d6efd;
+}
+
+/* ===============================
+   AI Assistant
+================================ */
+
+.ai-box {
+  background-color: #ffffff;
+  border-radius: 20px;
+  padding: 30px;
+  border: 1px solid #e9ecef;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.05);
+}
+
+.ai-answer {
+  background-color: #f8f9fa;
+  border-left: 5px solid #0d6efd;
+  padding: 18px;
+  border-radius: 12px;
+  margin-top: 20px;
+}
+
+/* ===============================
+   Buttons
+================================ */
+
+.btn {
+  border-radius: 10px;
+  font-weight: 500;
+}
+
+.btn-lg {
+  padding: 12px 24px;
+}
+
+/* ===============================
+   Footer
+================================ */
+
+footer {
+  border-top: 1px solid #e9ecef;
+}
+
+/* ===============================
+   Responsive Design
+================================ */
+
+@media (max-width: 992px) {
+  .hero-section {
+    padding: 50px 0;
+  }
+
+  .hero-card {
+    margin-top: 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  .display-5 {
+    font-size: 2rem;
+  }
+
+  .hero-section {
+    padding: 35px 0;
+  }
+
+  .hero-card,
+  .form-card,
+  .ai-box,
+  .card-box {
+    padding: 22px;
+  }
+
+  .page-header {
+    padding-top: 15px;
+  }
+
+  .table-responsive {
+    padding: 10px;
+  }
+
+  .btn-lg {
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .container {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .form-card {
+    margin: 30px auto;
+  }
+
+  .table th,
+  .table td {
+    font-size: 13px;
+  }
+
+  footer p {
+    font-size: 13px;
+  }
+}
