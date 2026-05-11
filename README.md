@@ -8,7 +8,7 @@ Hackathon yönlendirme dokümanındaki 6 alandan **3'üne** odaklandık (1+ gere
 
 | Alan | Karşılığı |
 |------|-----------|
-| **1. Müşteri İletişiminin Otomasyonu** | Tool calling tabanlı agent (AI takım üyesinin domain'i — `app/services/agent.py`) |
+| **1. Müşteri İletişiminin Otomasyonu** | Tool calling tabanlı agent (AI takım üyesinin domain'i — `ai/agent.py`) |
 | **2. Ürün ve Sipariş Takibi** | Dashboard + Orders sayfası + sabah özeti |
 | **4. Stok ve Envanter Yönetimi** | Inventory sayfası + kritik stok uyarısı + Gemini ile tedarikçi mail taslağı |
 

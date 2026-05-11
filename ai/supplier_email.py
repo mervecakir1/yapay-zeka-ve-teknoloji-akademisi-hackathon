@@ -30,7 +30,7 @@ def draft_supplier_email(
         f"we would like to place an order for {suggested_order_qty} units.\n\n"
         f"Please confirm availability and provide an estimated delivery date.\n\n"
         f"Best regards.\n\n"
-        f"[AI not yet implemented - app/services/supplier_email.py]"
+        f"[AI not yet implemented - ai/supplier_email.py]"
     )
     return SupplierEmailDraft(
         subject=subject,

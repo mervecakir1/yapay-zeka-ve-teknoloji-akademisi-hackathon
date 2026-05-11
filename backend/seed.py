@@ -1,6 +1,6 @@
 """
 Veritabanını sıfırlar ve frontend ile uyumlu örnek veri yükler.
-Çalıştırma: python -m app.seed
+Çalıştırma: python -m backend.seed
 """
 from datetime import datetime, timezone, timedelta
 
@@ -110,7 +110,7 @@ def run():
         print("    sales@kobi.local      -> Sales Manager (orders only)")
         print("    inventory@kobi.local  -> Inventory Staff (stock only)")
         print(f"  {len(products)} products, 3 customers, {len(orders)} orders, 2 suppliers loaded")
-        print("  DB: app/smb_app.db")
+        print("  DB: backend/smb_app.db")
     finally:
         db.close()
 
