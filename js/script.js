@@ -551,134 +551,33 @@ async function loadAIAssistantPage() {
 
   if (!aiAssistantForm) return;
 
-  try {
-    await fetchProducts();
-    await fetchOrders();
-  } catch (error) {
-    aiAnswerText.textContent =
-      "Assistant data could not be loaded. Please make sure the backend is running.";
+  async function askAI(question) {
+    aiAnswerText.textContent = "Thinking...";
     aiAnswerBox.classList.remove("d-none");
-    return;
-  }
 
-  function getLowStockProducts() {
-    return products.filter(
-      (product) => product.stock_quantity <= product.critical_stock_level
-    );
-  }
+    try {
+      const response = await fetch("http://127.0.0.1:8001/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: question })
+      });
 
-  function getTodayOrders() {
-    return orders.filter((order) => order.order_date === "2026-05-09");
-  }
-
-  function generateAIAnswer(question) {
-    const lowerQuestion = question.toLowerCase();
-
-    if (
-      lowerQuestion.includes("low stock") ||
-      lowerQuestion.includes("critical") ||
-      lowerQuestion.includes("stock")
-    ) {
-      const lowStockProducts = getLowStockProducts();
-
-      if (lowStockProducts.length === 0) {
-        return "There are no products below the critical stock level.";
-      }
-
-      const productNames = lowStockProducts
-        .map((product) => product.product_name)
-        .join(", ");
-
-      return `The products below the critical stock level are: ${productNames}. These products should be restocked soon.`;
+      const data = await response.json();
+      aiAnswerText.textContent = data.answer;
+    } catch (error) {
+      aiAnswerText.textContent = "AI service is not running. Please start the AI agent.";
     }
-
-    if (
-      lowerQuestion.includes("order 128") ||
-      lowerQuestion.includes("128")
-    ) {
-      const order = orders.find((order) => order.order_id === 128);
-
-      if (order) {
-        return `Order #${order.order_id} belongs to ${order.customer_name}. The product is ${order.product_name}, the quantity is ${order.quantity}, and the current status is ${order.order_status}.`;
-      }
-
-      return "Order #128 could not be found.";
-    }
-
-    if (
-      lowerQuestion.includes("today") ||
-      lowerQuestion.includes("summary") ||
-      lowerQuestion.includes("daily")
-    ) {
-      const todayOrders = getTodayOrders();
-
-      const pending = todayOrders.filter(
-        (order) => order.order_status === "Pending"
-      ).length;
-
-      const preparing = todayOrders.filter(
-        (order) => order.order_status === "Preparing"
-      ).length;
-
-      const completed = todayOrders.filter(
-        (order) => order.order_status === "Completed"
-      ).length;
-
-      return `Today, ${todayOrders.length} orders were received. ${pending} orders are pending, ${preparing} orders are preparing, and ${completed} orders are completed.`;
-    }
-
-    if (
-      lowerQuestion.includes("suggestion") ||
-      lowerQuestion.includes("restock")
-    ) {
-      const lowStockProducts = getLowStockProducts();
-
-      if (lowStockProducts.length === 0) {
-        return "All products have sufficient stock levels.";
-      }
-
-      return lowStockProducts
-        .map(
-          (product) =>
-            `${product.product_name}: restock at least ${product.critical_stock_level * 2} units.`
-        )
-        .join(" ");
-    }
-
-    if (
-      lowerQuestion.includes("customer message") ||
-      lowerQuestion.includes("message")
-    ) {
-      const order = orders.find((order) => order.order_id === 128);
-
-      if (order) {
-        return `Hello ${order.customer_name}, your order #${order.order_id} for ${order.product_name} is currently ${order.order_status}. Thank you for shopping with us.`;
-      }
-
-      return "Customer message could not be prepared because the order was not found.";
-    }
-
-    return "I can help you with order status, low stock products, stock suggestions, daily summaries, and customer messages.";
   }
 
   aiAssistantForm.addEventListener("submit", function (event) {
     event.preventDefault();
-
-    const question = aiQuestionInput.value.trim();
-    const answer = generateAIAnswer(question);
-
-    aiAnswerText.textContent = answer;
-    aiAnswerBox.classList.remove("d-none");
+    askAI(aiQuestionInput.value.trim());
   });
 
   exampleQuestions.forEach((button) => {
     button.addEventListener("click", function () {
       aiQuestionInput.value = button.textContent.trim();
-
-      const answer = generateAIAnswer(aiQuestionInput.value);
-
-      aiAnswerText.textContent = answer;
-      aiAnswerBox.classList.remove("d-none");
+      askAI(aiQuestionInput.value);
     });
   });
 }
