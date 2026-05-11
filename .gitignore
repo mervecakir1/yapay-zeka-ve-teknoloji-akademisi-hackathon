@@ -16,6 +16,8 @@ venv/
 *.db
 *.sqlite
 *.sqlite3
+# Demo seed DB takım paylaşımı için tracked
+!backend/smb_app.db
 
 # IDE
 .idea/
