@@ -1,6 +1,14 @@
 # SMB E-Commerce AI Assistant
 
-KOBİ'ler için yapay zeka destekli e-ticaret operasyon yönetim sistemi. Müşteri sorularını yanıtlayan agent, sipariş/ürün takibi paneli, stok yönetimi ve tedarikçi mail otomasyonu.
+## Proje Özeti
+
+Bu proje, KOBİ’lerin e-ticaret operasyonlarını tek bir panel üzerinden daha kolay, hızlı ve verimli şekilde yönetebilmesi için geliştirilmiş yapay zeka destekli bir web uygulamasıdır.
+
+Sistem; ürün yönetimi, sipariş takibi, stok kontrolü, tedarikçi yönetimi, tedarikçi mail taslağı oluşturma ve veritabanına bağlı çalışan AI Assistant özelliklerini bir araya getirir. Böylece küçük işletmeler, günlük operasyonlarını manuel takip etmek yerine merkezi ve akıllı bir yönetim paneli üzerinden kontrol edebilir.
+
+Projenin temel amacı; küçük işletmelerin operasyonel yükünü azaltmak, stok ve sipariş süreçlerini daha görünür hale getirmek, kritik durumlarda hızlı aksiyon alınmasını sağlamak ve yapay zeka desteğiyle karar alma süreçlerini kolaylaştırmaktır.
+
+Uygulamada giriş yapan kullanıcının rolü arayüz üzerinde gösterilir. Kullanıcı rolüne göre bazı butonlar ve işlemler görünür ya da gizlenir. Bu yapı sayesinde frontend tarafında kullanıcı deneyimi iyileştirilirken, backend tarafında rol bazlı yetkilendirme ile güvenli erişim kontrolü sağlanır.
 
 ## Çözülen Problem Alanları
 
