@@ -19,7 +19,7 @@ from google.genai import types
 
 logger = logging.getLogger(__name__)
 
-MODEL_NAME = "gemini-2.0-flash"
+MODEL_NAME = "gemini-flash-latest"
 
 SYSTEM_PROMPT = """You are an operations assistant for an SMB e-commerce business.
 The user gives you today's metrics. Produce a short morning brief (3-4 sentences max)

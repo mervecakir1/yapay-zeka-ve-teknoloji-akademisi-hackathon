@@ -27,7 +27,7 @@ from backend.models import Order, OrderDetail, Product, ChatMessage
 
 logger = logging.getLogger(__name__)
 
-MODEL_NAME = "gemini-2.0-flash"
+MODEL_NAME = "gemini-flash-latest"
 HISTORY_LIMIT = 10
 MAX_ITER = 5
 
