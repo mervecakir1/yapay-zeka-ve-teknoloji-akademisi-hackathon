@@ -34,7 +34,7 @@ class OrderCreate(BaseModel):
     customer_phone: Optional[str] = None
     product_id: int
     quantity: int = Field(gt=0)
-    order_date: str  # "YYYY-MM-DD"
+    order_date: str
     order_status: str
     total_price: float
 
@@ -45,10 +45,19 @@ class OrderStatusUpdate(BaseModel):
     shipping_carrier: Optional[str] = None
 
 
+# ===== Supplier =====
+
+class SupplierCreate(BaseModel):
+    name: str = Field(min_length=2, max_length=150)
+    email: str
+    phone: Optional[str] = None
+    product_ids: list[int] = Field(default_factory=list)
+
+
 # ===== Chat =====
 
 class ChatRequest(BaseModel):
-    customer_id: Optional[int] = None  # opsiyonel; varsa konuşma geçmişi DB'de tutulur
+    customer_id: Optional[int] = None
     message: str = Field(min_length=1, max_length=2000)
 
 
@@ -64,7 +73,7 @@ class InventoryUpdate(BaseModel):
     critical_level: int
 
 
-# ===== Supplier email (AI servisi tarafından üretilir) =====
+# ===== Supplier Email Draft =====
 
 class SupplierEmailDraft(BaseModel):
     subject: str
