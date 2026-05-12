@@ -222,7 +222,7 @@ Frontend'e dön (cevap + kullanılan tool listesi)
 
 ```powershell
 # 1) Bağımlılıklar
-cd HackathonProject
+cd Yapay-Zeka-ve-Teknoloji-Akademisi-Hackathon
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
@@ -302,28 +302,32 @@ Hepsinin şifresi: `password123`
 |---|---|---|
 | `GET` | `/health` | public |
 | `POST` | `/users` | public |
-| `POST` | `/login` | public (JSON — frontend bunu kullanır) |
-| `POST` | `/auth/token` | public (OAuth2 form-data — Swagger Authorize butonu için) |
+| `POST` | `/login` | public |
+| `POST` | `/auth/token` | public |
 | `GET` | `/me` | auth |
-| `GET` | `/users` | Admin/Owner |
-| `DELETE` | `/users/{id}` | Admin |
+| `GET` | `/users` | Admin / Business Owner |
+| `DELETE` | `/users/{user_id}` | Admin |
 | `GET` | `/products` | her rol |
-| `POST` | `/products` | Admin/Owner |
-| `PUT` | `/products/{id}` | Admin/Owner |
-| `DELETE` | `/products/{id}` | Admin/Owner |
+| `POST` | `/products` | Admin / Business Owner |
+| `PUT` | `/products/{product_id}` | Admin / Business Owner |
+| `DELETE` | `/products/{product_id}` | Admin / Business Owner |
 | `GET` | `/orders` | her rol |
-| `POST` | `/orders` | Admin/Owner/Sales |
-| `PUT` | `/orders/{id}/status` | Admin/Owner/Sales |
-| `PUT` | `/orders/{id}/cancel` | Admin/Owner/Sales |
+| `POST` | `/orders` | Admin / Business Owner / Sales Manager |
+| `PUT` | `/orders/{order_id}/status` | Admin / Business Owner / Sales Manager |
+| `PUT` | `/orders/{order_id}/cancel` | Admin / Business Owner / Sales Manager |
+| `DELETE` | `/orders/{order_id}` | Admin / Business Owner / Sales Manager |
 | `GET` | `/inventory` | her rol |
-| `PUT` | `/inventory/{product_id}` | Admin/Owner/Inventory |
-| `POST` | `/inventory/products/{id}/draft-supplier-email` | Admin/Owner/Inventory |
-| `GET` | `/suppliers` | her rol |
-| `GET` | `/suppliers/{id}` | her rol |
+| `PUT` | `/inventory/{product_id}` | Admin / Business Owner / Inventory Staff |
+| `POST` | `/inventory/products/{product_id}/draft-supplier-email` | Admin / Business Owner / Inventory Staff |
+| `POST` | `/chat/` | public |
 | `GET` | `/dashboard` | her rol |
-| `POST` | `/chat/` | public (müşteri chat) |
+| `GET` | `/suppliers` | her rol |
+| `POST` | `/suppliers` | Admin / Business Owner |
+| `GET` | `/suppliers/{supplier_id}` | her rol |
+| `PUT` | `/suppliers/{supplier_id}` | Admin / Business Owner |
+| `DELETE` | `/suppliers/{supplier_id}` | Admin / Business Owner |
 
-Toplam: **22 endpoint** (FastAPI auto `/docs`, `/openapi.json`, `/redoc` hariç)
+Toplam: **26 endpoint** (FastAPI auto `/docs`, `/openapi.json`, `/redoc` hariç)
 
 ## Sınırlamalar (Demo Sürümü)
 
