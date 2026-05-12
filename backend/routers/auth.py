@@ -6,11 +6,12 @@ JWT auth flow:
 Korumalı endpoint'ler `Depends(get_current_user)` ile auth zorunlu kılar.
 Frontend her isteğe `Authorization: Bearer <token>` header'ı ekler.
 """
+import os
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import jwt, JWTError
 from passlib.context import CryptContext
 from starlette import status
@@ -19,15 +20,21 @@ from ..database import db_dependency
 from ..models import User
 from ..schemas import UserCreate, LoginRequest
 
-# Demo için sabit; production'da .env'den okunmalı
-SECRET_KEY = "acoztm3revp1vfj7ld5sz2ndg5xp79r9fnr2p4hx2dy63h6a8efhj6rm54u8evh8"
+# JWT secret — .env'den okunur. Üretim ortamında JWT_SECRET_KEY MUTLAKA set edilmeli.
+# Demo fallback değeri yalnızca dev için; repo public ise rotate edilmeli.
+SECRET_KEY = os.environ.get(
+    "JWT_SECRET_KEY",
+    "dev-only-do-not-use-in-production-change-me-via-env",
+)
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
 router = APIRouter(tags=["Auth"])
 
 bcrypt_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_bearer = OAuth2PasswordBearer(tokenUrl="/login", auto_error=False)
+# tokenUrl olarak Swagger "Authorize" butonunun çağıracağı form-data endpoint'i;
+# bu sayede /docs içinde tek tıkla auth yapılabilir (aşağıdaki /auth/token).
+oauth2_bearer = OAuth2PasswordBearer(tokenUrl="/auth/token", auto_error=False)
 
 
 def _serialize_user(user: User) -> dict:
@@ -150,12 +157,19 @@ def create_user(payload: UserCreate, db: db_dependency):
     return {"message": "User created successfully. Please login.", "user": _serialize_user(user)}
 
 
+def _authenticate(db, email: str, password: str) -> User:
+    """Ortak login mantığı — hem JSON hem OAuth2 form endpoint'i tarafından kullanılır."""
+    email_normalized = email.strip().lower()
+    user = db.query(User).filter(User.email == email_normalized).first()
+    if user is None or not bcrypt_context.verify(password, user.hashed_password):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password.")
+    return user
+
+
 @router.post("/login")
 def login(payload: LoginRequest, db: db_dependency):
-    email_normalized = payload.email.strip().lower()
-    user = db.query(User).filter(User.email == email_normalized).first()
-    if user is None or not bcrypt_context.verify(payload.password, user.hashed_password):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password.")
+    """Frontend için JSON gövdeli login (kullanıcı bilgisi de döner)."""
+    user = _authenticate(db, payload.email, payload.password)
 
     token = create_access_token(
         user_id=user.id,
@@ -171,6 +185,25 @@ def login(payload: LoginRequest, db: db_dependency):
         "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         "user": _serialize_user(user),
     }
+
+
+@router.post("/auth/token")
+def token_form(
+    db: db_dependency,
+    form_data: OAuth2PasswordRequestForm = Depends(),
+):
+    """
+    OAuth2 password-flow uyumlu form-data login.
+    Yalnızca Swagger UI'ın 'Authorize' butonu için var; frontend /login JSON'unu kullanır.
+    """
+    user = _authenticate(db, form_data.username, form_data.password)
+    token = create_access_token(
+        user_id=user.id,
+        email=user.email,
+        role=user.role,
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
+    )
+    return {"access_token": token, "token_type": "bearer"}
 
 
 @router.get("/me")

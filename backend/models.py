@@ -17,7 +17,8 @@ class User(Base):
     name = Column(String, nullable=False)
     email = Column(String, unique=True, nullable=False)
     hashed_password = Column(String, nullable=False)
-    role = Column(String, default="owner", nullable=False)
+    # Geçerli roller: Admin / Business Owner / Sales Manager / Inventory Staff
+    role = Column(String, default="Inventory Staff", nullable=False)
     created_at = Column(DateTime, default=utcnow)
 
 
@@ -96,6 +97,9 @@ class ChatMessage(Base):
     __tablename__ = "chat_messages"
 
     id = Column(Integer, primary_key=True, index=True)
+    # customer_id zorunlu — staff/anonim mesajlar (customer_id=None) DB'ye yazılmaz,
+    # `agent._save_message` bu durumda short-circuit eder. Staff chat'leri farklı
+    # kullanıcılar arasında karıştırmamak için kasıtlı stateless tutulur.
     customer_id = Column(Integer, ForeignKey("customers.id"), nullable=False)
     role = Column(String, nullable=False)  # "user" or "assistant"
     content = Column(Text, nullable=False)

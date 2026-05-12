@@ -8,7 +8,7 @@ class UserCreate(BaseModel):
     name: str = Field(min_length=2, max_length=100)
     email: str
     password: str = Field(min_length=4)
-    role: str = "owner"
+    role: str = "Inventory Staff"
 
 
 class LoginRequest(BaseModel):

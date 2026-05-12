@@ -1,8 +1,11 @@
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
-# .env'i app modüllerinden önce yükle (AI_ENABLED, GOOGLE_API_KEY gibi flag'ler için)
-load_dotenv()
+# .env'i app modüllerinden önce yükle — explicit path (cwd ne olursa olsun çalışsın)
+# backend/main.py'dan iki seviye yukarı = proje kök → .env
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+load_dotenv(PROJECT_ROOT / ".env")
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware

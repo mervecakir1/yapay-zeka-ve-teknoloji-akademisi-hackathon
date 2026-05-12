@@ -48,7 +48,7 @@ function applyRoleUI() {
     const li = document.createElement("li");
     li.className = "nav-item d-flex align-items-center me-3";
     li.id = "currentUserBadge";
-    li.innerHTML = `<span class="text-light small">${user.name} <span class="badge bg-primary">${user.role}</span></span>`;
+    li.innerHTML = `<span class="text-light small">${escapeHtml(user.name)} <span class="badge bg-primary">${escapeHtml(user.role)}</span></span>`;
     navUl.insertBefore(li, navUl.firstChild);
   }
 
@@ -94,6 +94,29 @@ function applyRoleUI() {
 // ===============================
 // Helper Functions
 // ===============================
+
+// HTML escape — kullanıcı verisini innerHTML içine basarken XSS engelleme.
+function escapeHtml(value) {
+  if (value === null || value === undefined) return "";
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+// JS string-literal escape — onclick="fn('${...}')" gibi inline handler argümanları için.
+function escapeJsString(value) {
+  if (value === null || value === undefined) return "";
+  return String(value)
+    .replace(/\\/g, "\\\\")
+    .replace(/'/g, "\\'")
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, "\\n")
+    .replace(/\r/g, "\\r")
+    .replace(/</g, "\\u003c");
+}
 
 function getStatusClass(status) {
   if (status === "Pending") return "status-pending";
@@ -335,11 +358,11 @@ async function loadProductsPage() {
       productsTableBody.innerHTML += `
         <tr>
           <td>P${String(product.product_id).padStart(3, "0")}</td>
-          <td>${product.product_name}</td>
-          <td>${product.category}</td>
-          <td>$${product.price}</td>
-          <td>${product.stock_quantity}</td>
-          <td>${product.critical_stock_level}</td>
+          <td>${escapeHtml(product.product_name)}</td>
+          <td>${escapeHtml(product.category)}</td>
+          <td>$${Number(product.price)}</td>
+          <td>${Number(product.stock_quantity)}</td>
+          <td>${Number(product.critical_stock_level)}</td>
           <td>
             <span class="status-badge ${statusClass}">
               ${stockStatus}
@@ -437,25 +460,27 @@ async function loadOrdersPage() {
       if (order.order_status === "Completed") completedCount++;
 
       const statusClass = getStatusClass(order.order_status);
+      // onclick handler argümanları JS string olarak yorumlanır — single/double quote ve
+      // <script> içeren kullanıcı verisi enjeksiyonu için escapeJsString gerekli.
       const editBtn = canEdit
-        ? `<button class="btn btn-sm btn-outline-primary" onclick="openShippingModal(${order.order_id}, '${order.order_status}', '${order.tracking_no || ""}', '${order.shipping_carrier || ""}')">Update</button>`
+        ? `<button class="btn btn-sm btn-outline-primary" onclick="openShippingModal(${Number(order.order_id)}, '${escapeJsString(order.order_status)}', '${escapeJsString(order.tracking_no || "")}', '${escapeJsString(order.shipping_carrier || "")}')">Update</button>`
         : "";
       const tooltip = `${order.customer_email || ""} ${order.customer_phone ? "· " + order.customer_phone : ""}`;
 
       ordersTableBody.innerHTML += `
         <tr>
-          <td>#${order.order_id}</td>
-          <td title="${tooltip}">${order.customer_name}</td>
-          <td>${order.product_name}</td>
-          <td>${order.quantity}</td>
-          <td>${order.order_date}</td>
+          <td>#${Number(order.order_id)}</td>
+          <td title="${escapeHtml(tooltip)}">${escapeHtml(order.customer_name)}</td>
+          <td>${escapeHtml(order.product_name)}</td>
+          <td>${Number(order.quantity)}</td>
+          <td>${escapeHtml(order.order_date)}</td>
           <td>
-            <span class="status-badge ${statusClass}">${order.order_status}</span>
+            <span class="status-badge ${statusClass}">${escapeHtml(order.order_status)}</span>
           </td>
-          <td>$${order.total_price}</td>
-          <td>${order.tracking_no || "-"}</td>
-          <td>${order.shipping_carrier || "-"}</td>
-          <td>${order.estimated_delivery || "-"}</td>
+          <td>$${Number(order.total_price)}</td>
+          <td>${escapeHtml(order.tracking_no || "-")}</td>
+          <td>${escapeHtml(order.shipping_carrier || "-")}</td>
+          <td>${escapeHtml(order.estimated_delivery || "-")}</td>
           <td>${editBtn}</td>
         </tr>
       `;
@@ -640,18 +665,18 @@ async function loadInventoryPage() {
       // Draft Email butonu sadece kritik stoktaki ürünlere ve yetkili role
       const canDraft = userHasRole(ROLES.ADMIN, ROLES.BUSINESS_OWNER, ROLES.INVENTORY_STAFF);
       const draftBtn = (stockStatus === "Critical" && canDraft)
-        ? `<button class="btn btn-sm btn-outline-warning" onclick="openDraftEmailModal(${item.product_id})">Draft Email</button>`
+        ? `<button class="btn btn-sm btn-outline-warning" onclick="openDraftEmailModal(${Number(item.product_id)})">Draft Email</button>`
         : "";
 
       inventoryTableBody.innerHTML += `
         <tr>
-          <td>${item.product_name}</td>
-          <td>${item.current_stock}</td>
-          <td>${item.critical_level}</td>
+          <td>${escapeHtml(item.product_name)}</td>
+          <td>${Number(item.current_stock)}</td>
+          <td>${Number(item.critical_level)}</td>
           <td>
             <span class="status-badge ${statusClass}">${stockStatus}</span>
           </td>
-          <td>${suggestion}</td>
+          <td>${escapeHtml(suggestion)}</td>
           <td>${draftBtn}</td>
         </tr>
       `;
@@ -721,12 +746,9 @@ async function loadDashboardPage() {
     document.getElementById("dashboardLowStockProducts").textContent =
       dashboardData.low_stock_products;
 
-    document.getElementById("dashboardDailySummary").innerHTML = `
-      Today, the business received <strong>${dashboardData.today_orders} orders</strong>. 
-      <strong>${dashboardData.pending_orders} orders</strong> are pending, 
-      <strong>${dashboardData.preparing_orders} orders</strong> are preparing, and 
-      <strong>${dashboardData.completed_orders} orders</strong> have been completed.
-    `;
+    // AI-generated brief from backend (Gemini if AI_ENABLED=true, rule-based fallback otherwise)
+    document.getElementById("dashboardDailySummary").textContent =
+      dashboardData.ai_brief || `Today: ${dashboardData.today_orders} orders received, ${dashboardData.pending_orders} pending, ${dashboardData.preparing_orders} in preparation, ${dashboardData.completed_orders} completed.`;
 
     document.getElementById("dashboardStockAlert").textContent =
       `${dashboardData.low_stock_products} products are below the critical stock level and should be restocked soon.`;
@@ -741,15 +763,15 @@ async function loadDashboardPage() {
 
       recentOrdersBody.innerHTML += `
         <tr>
-          <td>#${order.order_id}</td>
-          <td>${order.customer_name}</td>
-          <td>${order.product_name}</td>
+          <td>#${Number(order.order_id)}</td>
+          <td>${escapeHtml(order.customer_name)}</td>
+          <td>${escapeHtml(order.product_name)}</td>
           <td>
             <span class="status-badge ${statusClass}">
-              ${order.order_status}
+              ${escapeHtml(order.order_status)}
             </span>
           </td>
-          <td>$${order.total_price}</td>
+          <td>$${Number(order.total_price)}</td>
         </tr>
       `;
     });
@@ -823,20 +845,20 @@ async function loadSuppliersPage() {
     tbody.innerHTML = "";
     suppliers.forEach((s) => {
       const productsHtml = s.products
-        .map((p) => `<span class="badge bg-light text-dark me-1 mb-1">${p.product_name} (${p.stock_quantity})</span>`)
+        .map((p) => `<span class="badge bg-light text-dark me-1 mb-1">${escapeHtml(p.product_name)} (${Number(p.stock_quantity)})</span>`)
         .join(" ") || `<span class="text-muted">No products</span>`;
       tbody.innerHTML += `
         <tr>
-          <td>${s.supplier_id}</td>
-          <td>${s.name}</td>
-          <td><a href="mailto:${s.email}">${s.email}</a></td>
-          <td>${s.phone || "-"}</td>
+          <td>${Number(s.supplier_id)}</td>
+          <td>${escapeHtml(s.name)}</td>
+          <td><a href="mailto:${escapeHtml(s.email)}">${escapeHtml(s.email)}</a></td>
+          <td>${escapeHtml(s.phone || "-")}</td>
           <td>${productsHtml}</td>
         </tr>
       `;
     });
   } catch (e) {
-    tbody.innerHTML = `<tr><td colspan="5" class="text-danger">Suppliers could not be loaded: ${e.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5" class="text-danger">Suppliers could not be loaded: ${escapeHtml(e.message)}</td></tr>`;
   }
 }
 

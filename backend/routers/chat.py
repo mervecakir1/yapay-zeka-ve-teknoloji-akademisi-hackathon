@@ -27,5 +27,7 @@ def send_message(payload: ChatRequest, db: db_dependency):
         if customer is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Customer not found")
 
-    reply, used_tools = run_agent(payload.customer_id, payload.message)
+    # FastAPI dependency'den gelen `db`'yi agent'a paylaştırıyoruz; agent boşa ikinci
+    # bir DB connection açmasın.
+    reply, used_tools = run_agent(payload.customer_id, payload.message, db=db)
     return ChatResponse(reply=reply, used_tools=used_tools)

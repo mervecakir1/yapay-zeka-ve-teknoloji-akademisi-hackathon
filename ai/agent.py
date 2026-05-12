@@ -1,16 +1,19 @@
 """
-Customer chat agent — AI takım üyesinin yaklaşımına uyarlandı.
+Customer chat agent.
 
-Google'ın yeni `google.genai` SDK'sı + function calling kullanıyor.
+Google `google.genai` SDK + function calling kullanır.
 Tool'lar DB'den DOĞRUDAN okur (HTTP yok → auth/JWT derdi yok).
 
 Contract:
   run_agent(customer_id: Optional[int], message: str) -> (reply: str, used_tools: list[str])
 
-`AI_ENABLED=false` iken Gemini'ye gitmez, placeholder döner.
-`customer_id` verilirse konuşma geçmişi DB'de tutulur (ChatMessage tablosu).
+Davranış:
+  - AI_ENABLED=false → Gemini'ye gitmez, placeholder döner
+  - AI_ENABLED=true ama Gemini hata verirse (quota, network, vb.) → graceful quota-fallback
+  - customer_id verilirse konuşma geçmişi DB'de tutulur (ChatMessage tablosu)
 """
 import os
+import logging
 from typing import Optional
 
 from sqlalchemy.orm import Session
@@ -22,7 +25,9 @@ from google.genai import types
 from backend.database import SessionLocal
 from backend.models import Order, OrderDetail, Product, ChatMessage
 
-MODEL_NAME = "gemini-2.0-flash"  # gemini-2.5-flash free tier 20/gün, 2.0-flash 1500/gün
+logger = logging.getLogger(__name__)
+
+MODEL_NAME = "gemini-2.0-flash"
 HISTORY_LIMIT = 10
 MAX_ITER = 5
 
@@ -183,95 +188,137 @@ def _placeholder_reply(msg: str) -> str:
     )
 
 
+def _quota_error_reply(msg: str) -> str:
+    return (
+        "[AI service temporarily unavailable - quota limit reached. "
+        "Please try again later.] "
+        f"Your message: \"{msg}\""
+    )
+
+
 # ============================================================
 # MAIN ENTRY POINT
 # ============================================================
 
-def run_agent(customer_id: Optional[int], user_message: str) -> tuple[str, list[str]]:
+def run_agent(
+    customer_id: Optional[int],
+    user_message: str,
+    db: Optional[Session] = None,
+) -> tuple[str, list[str]]:
     """
     Agent'ı tek bir kullanıcı mesajı için çalıştırır.
 
-    Returns: (final_reply_text, list_of_tool_names_used)
-    """
-    db = SessionLocal()
-    try:
-        # 1) User mesajını kalıcı yap (customer_id varsa)
-        _save_message(db, customer_id, "user", user_message)
+    Args:
+        customer_id: Varsa konuşma geçmişi DB'de tutulur, yoksa stateless.
+        user_message: Kullanıcı sorusu.
+        db: Caller tarafından açılmış SQLAlchemy session (örn. FastAPI dependency).
+            Verilirse boşa connection açılmaz; verilmezse içeride yenisi açılır.
 
-        # 2) AI kapalıysa placeholder dön
+    Returns: (final_reply_text, list_of_tool_names_used)
+
+    NOT: User mesajı DB'ye burada DEĞİL, _run_gemini_agent içinde geçmiş
+    yüklendikten SONRA kaydedilir. Aksi halde Gemini aynı mesajı iki kez görür
+    (history'de + son content'te).
+    """
+    # Dışarıdan session geldiyse onu kullan; gelmediyse kendi session'umuzu aç ve sonda kapat.
+    owns_db = db is None
+    if owns_db:
+        db = SessionLocal()
+    try:
+        # AI kapalıysa placeholder dön
         if not _ai_enabled():
+            _save_message(db, customer_id, "user", user_message)
             reply = _placeholder_reply(user_message)
             _save_message(db, customer_id, "assistant", reply)
             return reply, []
 
-        client = _get_client()
+        # AI açık — Gemini'yi dene, hata olursa quota fallback'a düş
+        try:
+            return _run_gemini_agent(db, customer_id, user_message)
+        except Exception:
+            # Gerçek hata sebebini log'la, kullanıcıya graceful mesaj dön.
+            logger.exception("Gemini agent failed for customer_id=%s", customer_id)
+            _save_message(db, customer_id, "user", user_message)
+            reply = _quota_error_reply(user_message)
+            _save_message(db, customer_id, "assistant", reply)
+            return reply, []
+    finally:
+        if owns_db:
+            db.close()
 
-        # 3) Konuşma geçmişini Gemini formatına çevir
-        history = _load_history(db, customer_id)
-        contents = []
-        for role, content in history:
-            gemini_role = "user" if role == "user" else "model"
-            contents.append(types.Content(role=gemini_role, parts=[types.Part(text=content)]))
-        contents.append(types.Content(role="user", parts=[types.Part(text=user_message)]))
 
-        config = types.GenerateContentConfig(
-            system_instruction=SYSTEM_PROMPT,
-            tools=[TOOL_DECLARATIONS],
+def _run_gemini_agent(db: Session, customer_id: Optional[int], user_message: str) -> tuple[str, list[str]]:
+    """Gemini'ye gerçek çağrı + tool calling loop. Hata fırlatabilir."""
+    client = _get_client()
+
+    # Konuşma geçmişini Gemini formatına çevir
+    # ÖNEMLİ: history'yi user mesajını DB'ye kaydetmeden ÖNCE yükle, yoksa
+    # son user mesajı hem history'de hem de aşağıdaki append'te yer alır
+    # (Gemini için duplikasyon).
+    history = _load_history(db, customer_id)
+    contents = []
+    for role, content in history:
+        gemini_role = "user" if role == "user" else "model"
+        contents.append(types.Content(role=gemini_role, parts=[types.Part(text=content)]))
+    contents.append(types.Content(role="user", parts=[types.Part(text=user_message)]))
+
+    # Geçmiş alındıktan SONRA mesajı kalıcı yap — bir sonraki çağrıda görülsün.
+    _save_message(db, customer_id, "user", user_message)
+
+    config = types.GenerateContentConfig(
+        system_instruction=SYSTEM_PROMPT,
+        tools=[TOOL_DECLARATIONS],
+    )
+
+    used_tools: list[str] = []
+
+    # Agent loop — tool çağrısı kalmayana kadar dön
+    for _ in range(MAX_ITER):
+        response = client.models.generate_content(
+            model=MODEL_NAME,
+            contents=contents,
+            config=config,
         )
 
-        used_tools: list[str] = []
+        cand = response.candidates[0]
+        parts = cand.content.parts or []
 
-        # 4) Agent loop — tool çağrısı kalmayana kadar dön
-        for _ in range(MAX_ITER):
-            response = client.models.generate_content(
-                model=MODEL_NAME,
-                contents=contents,
-                config=config,
-            )
+        # Tool çağrısı var mı?
+        function_calls = [(p.function_call, p) for p in parts if getattr(p, "function_call", None)]
 
-            cand = response.candidates[0]
-            parts = cand.content.parts or []
+        if not function_calls:
+            # Tool çağrısı kalmadı — final cevap
+            final_text = (response.text or "").strip()
+            _save_message(db, customer_id, "assistant", final_text)
+            return final_text, used_tools
 
-            # Tool çağrısı var mı?
-            function_calls = [(p.function_call, p) for p in parts if getattr(p, "function_call", None)]
+        # Model'in tool-call mesajını contents'e ekle
+        contents.append(types.Content(role="model", parts=parts))
 
-            if not function_calls:
-                # Tool çağrısı kalmadı — final cevap
-                final_text = (response.text or "").strip()
-                _save_message(db, customer_id, "assistant", final_text)
-                return final_text, used_tools
+        # Her tool'u çalıştır, sonuçları topla
+        tool_response_parts = []
+        for fc, _orig_part in function_calls:
+            used_tools.append(fc.name)
+            tool_fn = TOOL_FUNCTIONS.get(fc.name)
+            if tool_fn is None:
+                result_payload = {"error": f"Unknown tool: {fc.name}"}
+            else:
+                try:
+                    raw = tool_fn(db)
+                    result_payload = {"result": raw} if not isinstance(raw, dict) else raw
+                except Exception as e:
+                    result_payload = {"error": str(e)}
 
-            # Model'in tool-call mesajını contents'e ekle
-            contents.append(types.Content(role="model", parts=parts))
+            tool_response_parts.append(types.Part(
+                function_response=types.FunctionResponse(
+                    name=fc.name,
+                    response=result_payload,
+                )
+            ))
 
-            # Her tool'u çalıştır, sonuçları topla
-            tool_response_parts = []
-            for fc, _orig_part in function_calls:
-                used_tools.append(fc.name)
-                tool_fn = TOOL_FUNCTIONS.get(fc.name)
-                if tool_fn is None:
-                    result_payload = {"error": f"Unknown tool: {fc.name}"}
-                else:
-                    try:
-                        raw = tool_fn(db)
-                        # liste ise wrap, dict ise olduğu gibi
-                        result_payload = {"result": raw} if not isinstance(raw, dict) else raw
-                    except Exception as e:
-                        result_payload = {"error": str(e)}
+        contents.append(types.Content(role="user", parts=tool_response_parts))
 
-                tool_response_parts.append(types.Part(
-                    function_response=types.FunctionResponse(
-                        name=fc.name,
-                        response=result_payload,
-                    )
-                ))
-
-            contents.append(types.Content(role="user", parts=tool_response_parts))
-
-        # 5) Loop limit
-        fallback = "I had trouble completing that request. Please try rephrasing."
-        _save_message(db, customer_id, "assistant", fallback)
-        return fallback, used_tools
-
-    finally:
-        db.close()
+    # Loop limit
+    fallback = "I had trouble completing that request. Please try rephrasing."
+    _save_message(db, customer_id, "assistant", fallback)
+    return fallback, used_tools
