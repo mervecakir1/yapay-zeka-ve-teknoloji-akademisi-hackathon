@@ -64,6 +64,89 @@ HackathonProject/
 ├── requirements.txt
 └── README.md
 ```
+## Veritabanı Tasarımı / ER Diyagramı
+Bu projede veritabanı yapısı 7 ana tablo üzerinden tasarlanmıştır: users, customers, suppliers, products, orders, order_details ve chat_messages.
+
+- Bir müşteri birden fazla sipariş oluşturabilir.
+- Bir sipariş, order_details tablosu üzerinden ürün detaylarını içerir.
+- Bir tedarikçi birden fazla ürün ile ilişkilendirilebilir.
+- Chat mesajları müşteriler ile ilişkilendirilebilir.
+- Envanter bilgisi ayrı bir tablo yerine products tablosundaki stock_quantity ve critical_stock_level alanları üzerinden yönetilir.
+
+### ER Diyagramı
+
+```mermaid
+erDiagram
+    USERS {
+        int id PK
+        string name
+        string email
+        string hashed_password
+        string role
+        datetime created_at
+    }
+
+    CUSTOMERS {
+        int id PK
+        string name
+        string email
+        string phone
+        datetime created_at
+    }
+
+    SUPPLIERS {
+        int id PK
+        string name
+        string email
+        string phone
+    }
+
+    PRODUCTS {
+        int id PK
+        string name
+        string category
+        float price
+        int stock_quantity
+        int critical_stock_level
+        int supplier_id FK
+        datetime created_at
+        datetime updated_at
+    }
+
+    ORDERS {
+        int id PK
+        int customer_id FK
+        string status
+        float total_amount
+        string tracking_no
+        string shipping_carrier
+        datetime order_date
+        datetime created_at
+        datetime estimated_delivery
+    }
+
+    ORDER_DETAILS {
+        int id PK
+        int order_id FK
+        int product_id FK
+        int quantity
+        float unit_price
+    }
+
+    CHAT_MESSAGES {
+        int id PK
+        int customer_id FK
+        string role
+        text content
+        datetime created_at
+    }
+
+    CUSTOMERS ||--o{ ORDERS : creates
+    ORDERS ||--o{ ORDER_DETAILS : contains
+    PRODUCTS ||--o{ ORDER_DETAILS : included_in
+    SUPPLIERS ||--o{ PRODUCTS : supplies
+    CUSTOMERS ||--o{ CHAT_MESSAGES : has
+```  
 
 ## Auth + Role-Based Access Control
 
