@@ -23,7 +23,7 @@ from backend.schemas import SupplierEmailDraft
 
 logger = logging.getLogger(__name__)
 
-MODEL_NAME = "gemini-2.0-flash"
+MODEL_NAME = "gemini-flash-latest"
 
 SYSTEM_PROMPT = """You are a procurement assistant for an SMB e-commerce business.
 Generate a short, professional email in English to a supplier requesting stock replenishment.

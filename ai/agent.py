@@ -1,16 +1,16 @@
 """
 Customer chat agent.
 
-Google `google.genai` SDK + function calling kullanır.
-Tool'lar DB'den DOĞRUDAN okur (HTTP yok → auth/JWT derdi yok).
+Google `google.genai` SDK + function calling kullanÄ±r.
+Tool'lar DB'den DOÄRUDAN okur (HTTP yok â†’ auth/JWT derdi yok).
 
 Contract:
   run_agent(customer_id: Optional[int], message: str) -> (reply: str, used_tools: list[str])
 
-Davranış:
-  - AI_ENABLED=false → Gemini'ye gitmez, placeholder döner
-  - AI_ENABLED=true ama Gemini hata verirse (quota, network, vb.) → graceful quota-fallback
-  - customer_id verilirse konuşma geçmişi DB'de tutulur (ChatMessage tablosu)
+DavranÄ±ÅŸ:
+  - AI_ENABLED=false â†’ Gemini'ye gitmez, placeholder dÃ¶ner
+  - AI_ENABLED=true ama Gemini hata verirse (quota, network, vb.) â†’ graceful quota-fallback
+  - customer_id verilirse konuÅŸma geÃ§miÅŸi DB'de tutulur (ChatMessage tablosu)
 """
 import os
 import logging
@@ -23,22 +23,22 @@ from google import genai
 from google.genai import types
 
 from backend.database import SessionLocal
-from backend.models import Order, OrderDetail, Product, ChatMessage
+from backend.models import Order, OrderDetail, Product, Supplier, ChatMessage
 
 logger = logging.getLogger(__name__)
 
-MODEL_NAME = "gemini-2.0-flash"
+MODEL_NAME = "gemini-flash-latest"
 HISTORY_LIMIT = 10
 MAX_ITER = 5
 
 SYSTEM_PROMPT = """You are an AI assistant for an SMB e-commerce management system.
-You help business owners with questions about their orders, products, inventory, and daily operations.
+You help business owners with questions about their orders, products, inventory, suppliers, and daily operations.
 
 CRITICAL RULES:
-1. ALWAYS call a tool to get real data. Never answer about specific products, orders, stock, or counts from memory.
-2. For SPECIFIC items (e.g., "order #5", "tomatoes stock", "most expensive product"), call the broadest tool
+1. ALWAYS call a tool to get real data. Never answer about specific products, orders, suppliers, stock, or counts from memory.
+2. For SPECIFIC items (e.g., "order #5", "tomatoes stock", "Anatolia supplier phone", "most expensive product"), call the broadest tool
    that returns the full list, then filter/analyze in your final answer. Do not refuse just because no
-   filter parameter exists — the data is there in the list.
+   filter parameter exists â€” the data is there in the list.
 3. If user asks for an action (cancel, update, delete), say you cannot perform write operations,
    only read data.
 4. If question is out of scope (weather, general knowledge), politely redirect to business topics.
@@ -54,7 +54,7 @@ def _get_client() -> genai.Client:
 
 
 # ============================================================
-# TOOLS — bizim DB'den okur, HTTP yok
+# TOOLS â€” bizim DB'den okur, HTTP yok
 # ============================================================
 
 def _tool_get_orders(db: Session) -> list:
@@ -110,6 +110,28 @@ def _tool_get_inventory(db: Session) -> list:
     ]
 
 
+def _tool_get_suppliers(db: Session) -> list:
+    return [
+        {
+            "supplier_id": s.id,
+            "name": s.name,
+            "email": s.email,
+            "phone": s.phone,
+            "products_count": len(s.products),
+            "products": [
+                {
+                    "product_id": p.id,
+                    "name": p.name,
+                    "stock_quantity": p.stock_quantity,
+                    "critical_stock_level": p.critical_stock_level,
+                }
+                for p in s.products
+            ],
+        }
+        for s in db.query(Supplier).order_by(Supplier.id).all()
+    ]
+
+
 def _tool_get_dashboard(db: Session) -> dict:
     return {
         "total_products": db.query(func.count(Product.id)).scalar() or 0,
@@ -127,11 +149,12 @@ TOOL_FUNCTIONS = {
     "get_orders": _tool_get_orders,
     "get_products": _tool_get_products,
     "get_inventory": _tool_get_inventory,
+    "get_suppliers": _tool_get_suppliers,
     "get_dashboard": _tool_get_dashboard,
 }
 
 
-# Gemini'ye sunulan tool şemaları
+# Gemini'ye sunulan tool ÅŸemalarÄ±
 TOOL_DECLARATIONS = types.Tool(function_declarations=[
     types.FunctionDeclaration(
         name="get_orders",
@@ -149,6 +172,11 @@ TOOL_DECLARATIONS = types.Tool(function_declarations=[
         parameters=types.Schema(type=types.Type.OBJECT, properties={}),
     ),
     types.FunctionDeclaration(
+        name="get_suppliers",
+        description="Get all suppliers with supplier name, email, phone number, product count, and linked products.",
+        parameters=types.Schema(type=types.Type.OBJECT, properties={}),
+    ),
+    types.FunctionDeclaration(
         name="get_dashboard",
         description="Get dashboard summary numbers: total products, total orders, pending/preparing/completed orders count, low stock product count.",
         parameters=types.Schema(type=types.Type.OBJECT, properties={}),
@@ -157,7 +185,7 @@ TOOL_DECLARATIONS = types.Tool(function_declarations=[
 
 
 # ============================================================
-# HISTORY (ChatMessage tablosunda kalıcı)
+# HISTORY (ChatMessage tablosunda kalÄ±cÄ±)
 # ============================================================
 
 def _save_message(db: Session, customer_id: Optional[int], role: str, content: str):
@@ -206,37 +234,37 @@ def run_agent(
     db: Optional[Session] = None,
 ) -> tuple[str, list[str]]:
     """
-    Agent'ı tek bir kullanıcı mesajı için çalıştırır.
+    Agent'Ä± tek bir kullanÄ±cÄ± mesajÄ± iÃ§in Ã§alÄ±ÅŸtÄ±rÄ±r.
 
     Args:
-        customer_id: Varsa konuşma geçmişi DB'de tutulur, yoksa stateless.
-        user_message: Kullanıcı sorusu.
-        db: Caller tarafından açılmış SQLAlchemy session (örn. FastAPI dependency).
-            Verilirse boşa connection açılmaz; verilmezse içeride yenisi açılır.
+        customer_id: Varsa konuÅŸma geÃ§miÅŸi DB'de tutulur, yoksa stateless.
+        user_message: KullanÄ±cÄ± sorusu.
+        db: Caller tarafÄ±ndan aÃ§Ä±lmÄ±ÅŸ SQLAlchemy session (Ã¶rn. FastAPI dependency).
+            Verilirse boÅŸa connection aÃ§Ä±lmaz; verilmezse iÃ§eride yenisi aÃ§Ä±lÄ±r.
 
     Returns: (final_reply_text, list_of_tool_names_used)
 
-    NOT: User mesajı DB'ye burada DEĞİL, _run_gemini_agent içinde geçmiş
-    yüklendikten SONRA kaydedilir. Aksi halde Gemini aynı mesajı iki kez görür
+    NOT: User mesajÄ± DB'ye burada DEÄÄ°L, _run_gemini_agent iÃ§inde geÃ§miÅŸ
+    yÃ¼klendikten SONRA kaydedilir. Aksi halde Gemini aynÄ± mesajÄ± iki kez gÃ¶rÃ¼r
     (history'de + son content'te).
     """
-    # Dışarıdan session geldiyse onu kullan; gelmediyse kendi session'umuzu aç ve sonda kapat.
+    # DÄ±ÅŸarÄ±dan session geldiyse onu kullan; gelmediyse kendi session'umuzu aÃ§ ve sonda kapat.
     owns_db = db is None
     if owns_db:
         db = SessionLocal()
     try:
-        # AI kapalıysa placeholder dön
+        # AI kapalÄ±ysa placeholder dÃ¶n
         if not _ai_enabled():
             _save_message(db, customer_id, "user", user_message)
             reply = _placeholder_reply(user_message)
             _save_message(db, customer_id, "assistant", reply)
             return reply, []
 
-        # AI açık — Gemini'yi dene, hata olursa quota fallback'a düş
+        # AI aÃ§Ä±k â€” Gemini'yi dene, hata olursa quota fallback'a dÃ¼ÅŸ
         try:
             return _run_gemini_agent(db, customer_id, user_message)
         except Exception:
-            # Gerçek hata sebebini log'la, kullanıcıya graceful mesaj dön.
+            # GerÃ§ek hata sebebini log'la, kullanÄ±cÄ±ya graceful mesaj dÃ¶n.
             logger.exception("Gemini agent failed for customer_id=%s", customer_id)
             _save_message(db, customer_id, "user", user_message)
             reply = _quota_error_reply(user_message)
@@ -248,13 +276,13 @@ def run_agent(
 
 
 def _run_gemini_agent(db: Session, customer_id: Optional[int], user_message: str) -> tuple[str, list[str]]:
-    """Gemini'ye gerçek çağrı + tool calling loop. Hata fırlatabilir."""
+    """Gemini'ye gerÃ§ek Ã§aÄŸrÄ± + tool calling loop. Hata fÄ±rlatabilir."""
     client = _get_client()
 
-    # Konuşma geçmişini Gemini formatına çevir
-    # ÖNEMLİ: history'yi user mesajını DB'ye kaydetmeden ÖNCE yükle, yoksa
-    # son user mesajı hem history'de hem de aşağıdaki append'te yer alır
-    # (Gemini için duplikasyon).
+    # KonuÅŸma geÃ§miÅŸini Gemini formatÄ±na Ã§evir
+    # Ã–NEMLÄ°: history'yi user mesajÄ±nÄ± DB'ye kaydetmeden Ã–NCE yÃ¼kle, yoksa
+    # son user mesajÄ± hem history'de hem de aÅŸaÄŸÄ±daki append'te yer alÄ±r
+    # (Gemini iÃ§in duplikasyon).
     history = _load_history(db, customer_id)
     contents = []
     for role, content in history:
@@ -262,7 +290,7 @@ def _run_gemini_agent(db: Session, customer_id: Optional[int], user_message: str
         contents.append(types.Content(role=gemini_role, parts=[types.Part(text=content)]))
     contents.append(types.Content(role="user", parts=[types.Part(text=user_message)]))
 
-    # Geçmiş alındıktan SONRA mesajı kalıcı yap — bir sonraki çağrıda görülsün.
+    # GeÃ§miÅŸ alÄ±ndÄ±ktan SONRA mesajÄ± kalÄ±cÄ± yap â€” bir sonraki Ã§aÄŸrÄ±da gÃ¶rÃ¼lsÃ¼n.
     _save_message(db, customer_id, "user", user_message)
 
     config = types.GenerateContentConfig(
@@ -272,7 +300,7 @@ def _run_gemini_agent(db: Session, customer_id: Optional[int], user_message: str
 
     used_tools: list[str] = []
 
-    # Agent loop — tool çağrısı kalmayana kadar dön
+    # Agent loop â€” tool Ã§aÄŸrÄ±sÄ± kalmayana kadar dÃ¶n
     for _ in range(MAX_ITER):
         response = client.models.generate_content(
             model=MODEL_NAME,
@@ -283,19 +311,19 @@ def _run_gemini_agent(db: Session, customer_id: Optional[int], user_message: str
         cand = response.candidates[0]
         parts = cand.content.parts or []
 
-        # Tool çağrısı var mı?
+        # Tool Ã§aÄŸrÄ±sÄ± var mÄ±?
         function_calls = [(p.function_call, p) for p in parts if getattr(p, "function_call", None)]
 
         if not function_calls:
-            # Tool çağrısı kalmadı — final cevap
+            # Tool Ã§aÄŸrÄ±sÄ± kalmadÄ± â€” final cevap
             final_text = (response.text or "").strip()
             _save_message(db, customer_id, "assistant", final_text)
             return final_text, used_tools
 
-        # Model'in tool-call mesajını contents'e ekle
+        # Model'in tool-call mesajÄ±nÄ± contents'e ekle
         contents.append(types.Content(role="model", parts=parts))
 
-        # Her tool'u çalıştır, sonuçları topla
+        # Her tool'u Ã§alÄ±ÅŸtÄ±r, sonuÃ§larÄ± topla
         tool_response_parts = []
         for fc, _orig_part in function_calls:
             used_tools.append(fc.name)

@@ -1,242 +1,428 @@
 # SMB E-Commerce AI Assistant
 
-KOBİ'ler için yapay zeka destekli e-ticaret operasyon yönetim sistemi. Müşteri sorularını yanıtlayan agent, sipariş/ürün takibi paneli, stok yönetimi ve tedarikçi mail otomasyonu.
+KOBI'ler icin gelistirilmis yapay zeka destekli e-ticaret operasyon yonetim sistemi. Proje; urun, siparis, stok, tedarikci ve gunluk is ozeti akislari uzerinden kucuk isletmelerin operasyon takibini kolaylastirir. AI katmani Gemini function calling kullanarak veritabanindan gercek verileri okur ve kullaniciya dogal dilde cevap uretir.
 
-## Çözülen Problem Alanları
+## Cozulen Problem Alanlari
 
-Hackathon yönlendirme dokümanındaki 6 alandan **3'üne** odaklandık:
+Hackathon kapsaminda uc ana alana odaklanildi:
 
-| Alan | Karşılığı |
-|------|-----------|
-| **1. Müşteri İletişiminin Otomasyonu** | Tool calling tabanlı Gemini agent (`ai/agent.py`) — 4 DB-bağımlı tool ile gerçek veri çeker |
-| **2. Ürün ve Sipariş Takibi** | Dashboard + Orders + Suppliers sayfaları, AI-üretilmiş günlük özet |
-| **4. Stok ve Envanter Yönetimi** | Inventory sayfası + kritik stok uyarısı + Gemini ile tedarikçi mail taslağı |
+| Alan | Projedeki karsiligi |
+|---|---|
+| Musteri iletisimi ve operasyon asistanligi | AI Assistant, Gemini function calling, DB tabanli tool'lar |
+| Urun ve siparis takibi | Products, Orders, Dashboard, kargo/status guncelleme |
+| Stok ve tedarikci yonetimi | Inventory kritik stok takibi, supplier yonetimi, tedarikci mail taslagi |
+
+## Temel Ozellikler
+
+- JWT tabanli login/register akisi.
+- Admin, Business Owner, Sales Manager ve Inventory Staff rolleri.
+- Role gore frontend buton gizleme ve backend `require_roles(...)` kontrolu.
+- Urun listeleme, ekleme, guncelleme ve silme.
+- Siparis ekleme, durum/kargo bilgisi guncelleme, iptal ve silme.
+- Siparis olusturulunca stok dusme; iptal/silme akislariyla stok geri yukleme.
+- Inventory ekraninda kritik stok tespiti.
+- Kritik stok urunleri icin supplier email draft uretimi.
+- Supplier listeleme, ekleme, guncelleme, silme ve urun baglama.
+- Dashboard metrikleri ve AI/kural tabanli gunluk ozet.
+- AI Assistant ile orders/products/inventory/suppliers/dashboard verileri uzerinden soru-cevap.
 
 ## Mimari
 
-```
-┌──────────────────────────────────────────────────────────────┐
-│                  FastAPI Application (port 8000)             │
-│                                                              │
-│  Frontend (static)            Backend (JSON API)             │
-│  ──────────────────           ─────────────────              │
-│  /index.html                  /login, /users (auth)          │
-│  /dashboard.html ◀──same-port─/products, /orders             │
-│  /products.html               /inventory, /suppliers         │
-│  /orders.html                 /dashboard, /chat              │
-│  /inventory.html                                             │
-│  /suppliers.html              JWT Bearer + RBAC (4 rol)      │
-│  /ai-assistant.html                                          │
-└─────────────────────────────────┬────────────────────────────┘
-                                  │
-                  ┌───────────────┼────────────────┐
-                  ▼               ▼                ▼
-           SQLAlchemy ORM   Google Gemini     ai/ servisleri
-              SQLite        (2.0 Flash)       (agent, supplier
-            7 tablo         function calling   email, brief)
+```mermaid
+flowchart LR
+    U["User / Browser"] --> F["Static Frontend<br/>HTML + Bootstrap + Vanilla JS"]
+    F --> API["FastAPI Backend<br/>JSON API + StaticFiles"]
+    API --> DB[("SQLite<br/>SQLAlchemy ORM")]
+    API --> AUTH["JWT Auth + RBAC"]
+    API --> AI["AI Services<br/>agent.py<br/>supplier_email.py<br/>dashboard_brief.py"]
+    AI --> GEMINI["Google Gemini<br/>Function Calling"]
+    AI --> DB
 ```
 
-### Klasör yapısı
+## Klasor Yapisi
 
-```
+```text
 HackathonProject/
-├── backend/                  # Backend (FastAPI)
-│   ├── main.py               # FastAPI app + CORS + frontend static mount
-│   ├── database.py           # SQLite engine + get_db dep
-│   ├── models.py             # SQLAlchemy ORM (7 tablo)
-│   ├── schemas.py            # Pydantic
-│   ├── seed.py               # Demo veri yükleyici
-│   ├── routers/              # JSON API endpoint'leri
-│   │   ├── auth.py           # JWT + RBAC
-│   │   ├── products.py, orders.py, inventory.py
-│   │   ├── suppliers.py, dashboard.py, chat.py
-│   └── smb_app.db            # SQLite (seed sonrası)
-├── ai/                       # AI servisleri
-│   ├── agent.py              # Gemini chat agent + tool calling
-│   ├── supplier_email.py     # Gemini ile mail taslağı
-│   └── dashboard_brief.py    # Gemini ile günlük özet
-├── frontend/                 # Frontend (HTML/CSS/JS)
-│   ├── *.html (11 sayfa)
-│   ├── css/style.css
-│   └── js/script.js
-├── .env / .env.example
-├── .gitignore
-├── requirements.txt
-└── README.md
+|-- ai/
+|   |-- agent.py              # AI Assistant + Gemini function calling
+|   |-- dashboard_brief.py    # Dashboard icin AI/kural tabanli ozet
+|   `-- supplier_email.py     # Kritik stok icin mail taslagi
+|-- backend/
+|   |-- main.py               # FastAPI app, CORS, static frontend mount
+|   |-- database.py           # SQLite engine ve DB dependency
+|   |-- models.py             # SQLAlchemy tablolar
+|   |-- schemas.py            # Pydantic request/response modelleri
+|   |-- seed.py               # Demo verisi
+|   |-- smb_app.db            # SQLite demo database
+|   `-- routers/
+|       |-- auth.py
+|       |-- products.py
+|       |-- orders.py
+|       |-- inventory.py
+|       |-- suppliers.py
+|       |-- dashboard.py
+|       `-- chat.py
+|-- frontend/
+|   |-- index.html
+|   |-- login.html
+|   |-- register.html
+|   |-- dashboard.html
+|   |-- products.html
+|   |-- add-product.html
+|   |-- orders.html
+|   |-- add-order.html
+|   |-- inventory.html
+|   |-- suppliers.html
+|   |-- add-supplier.html
+|   |-- ai-assistant.html
+|   |-- css/style.css
+|   `-- js/script.js
+|-- requirements.txt
+|-- .env.example
+`-- README.md
 ```
 
-## Auth + Role-Based Access Control
+## ER Diyagrami
 
-### JWT akışı
+```mermaid
+erDiagram
+    USERS {
+        int id PK
+        string name
+        string email UK
+        string hashed_password
+        string role
+        datetime created_at
+    }
 
+    CUSTOMERS {
+        int id PK
+        string name
+        string email
+        string phone
+        datetime created_at
+    }
+
+    SUPPLIERS {
+        int id PK
+        string name
+        string email
+        string phone
+    }
+
+    PRODUCTS {
+        int id PK
+        string name
+        string category
+        float price
+        int stock_quantity
+        int critical_stock_level
+        int supplier_id FK
+        datetime created_at
+        datetime updated_at
+    }
+
+    ORDERS {
+        int id PK
+        int customer_id FK
+        string status
+        float total_amount
+        string tracking_no
+        string shipping_carrier
+        datetime order_date
+        datetime created_at
+        datetime estimated_delivery
+    }
+
+    ORDER_DETAILS {
+        int id PK
+        int order_id FK
+        int product_id FK
+        int quantity
+        float unit_price
+    }
+
+    CHAT_MESSAGES {
+        int id PK
+        int customer_id FK
+        string role
+        text content
+        datetime created_at
+    }
+
+    CUSTOMERS ||--o{ ORDERS : places
+    CUSTOMERS ||--o{ CHAT_MESSAGES : has
+    SUPPLIERS ||--o{ PRODUCTS : supplies
+    ORDERS ||--o{ ORDER_DETAILS : contains
+    PRODUCTS ||--o{ ORDER_DETAILS : appears_in
 ```
-POST /login {email, password}
-  ↓
-{ access_token: "eyJ...", user: {user_id, name, email, role} }
-  ↓
-Frontend localStorage'a kaydeder
-Tüm sonraki isteklerde header: Authorization: Bearer eyJ...
-  ↓
-Backend get_current_user decode eder
+
+Not: Ayrica fiziksel bir `inventory` tablosu yoktur. Inventory ekrani `products.stock_quantity` ve `products.critical_stock_level` alanlarindan turetilen bir view gibi calisir.
+
+## Veri Modeli Mantigi
+
+| Tablo | Amac |
+|---|---|
+| `users` | Sisteme giris yapan personel ve rol bilgisi |
+| `customers` | Siparis veren musteriler |
+| `suppliers` | Tedarikci iletisim bilgileri |
+| `products` | Urun katalogu, fiyat, stok ve kritik stok seviyesi |
+| `orders` | Siparis ust bilgisi, durum ve kargo bilgisi |
+| `order_details` | Siparisteki urun, adet ve birim fiyat |
+| `chat_messages` | Customer ID verilirse AI sohbet gecmisi |
+
+## Auth ve RBAC
+
+Login akisi:
+
+```mermaid
+sequenceDiagram
+    participant Browser
+    participant API as FastAPI
+    participant DB as SQLite
+
+    Browser->>API: POST /login {email, password}
+    API->>DB: user lookup
+    DB-->>API: user + hashed_password + role
+    API-->>Browser: access_token + user
+    Browser->>Browser: localStorage'a kaydet
+    Browser->>API: Authorization: Bearer token
+    API-->>Browser: role'a gore veri/izin
 ```
 
-Token süresi: **60 dakika**. Expired olursa frontend 401 alır → otomatik logout.
+Token suresi 60 dakikadir. Token gecersiz veya expired olursa frontend localStorage'i temizler ve kullaniciyi login sayfasina yonlendirir.
 
-### Rol matrisi
+### Rol Matrisi
 
-| Endpoint | Admin | Business Owner | Sales Manager | Inventory Staff |
+| Islem | Admin | Business Owner | Sales Manager | Inventory Staff |
 |---|:-:|:-:|:-:|:-:|
-| `GET` (her şey) | ✓ | ✓ | ✓ | ✓ |
-| `POST/PUT/DELETE /products` | ✓ | ✓ | ✗ | ✗ |
-| `POST /orders`, status, cancel | ✓ | ✓ | ✓ | ✗ |
-| `PUT /inventory`, draft-email | ✓ | ✓ | ✗ | ✓ |
-| `GET /users` | ✓ | ✓ | ✗ | ✗ |
-| `DELETE /users` | ✓ | ✗ | ✗ | ✗ |
-
-Frontend role'a göre menüden Add Product / Add Order butonlarını gizler; backend `require_roles(...)` ile doğrular. **İki katmanlı koruma.**
+| Genel okuma endpointleri | OK | OK | OK | OK |
+| User listeleme | OK | OK | - | - |
+| User silme | OK | - | - | - |
+| Product ekleme/guncelleme/silme | OK | OK | - | - |
+| Order ekleme/guncelleme/iptal/silme | OK | OK | OK | - |
+| Inventory guncelleme | OK | OK | - | OK |
+| Draft supplier email | OK | OK | - | OK |
+| Supplier ekleme/guncelleme/silme | OK | OK | - | - |
 
 ## AI Entegrasyonu
 
-`ai/` klasörü 3 servis içerir, her biri **AI_ENABLED** flag'ine bağlı:
+`ai/` klasoru uc servis icerir:
 
-| Servis | AI_ENABLED=true | AI_ENABLED=false |
+| Servis | AI_ENABLED=true | AI_ENABLED=false veya hata |
 |---|---|---|
-| `agent.py` | Gemini 2.0 Flash + function calling (4 tool: get_orders/products/inventory/dashboard) | Placeholder mesaj |
-| `supplier_email.py` | Gemini ile özelleştirilmiş profesyonel mail | Güvenli şablon |
-| `dashboard_brief.py` | Gemini'nin doğal dilde yorumu | Kural-tabanlı özet |
+| `agent.py` | Gemini function calling ile DB tool'larini kullanir | Placeholder veya quota fallback mesaji |
+| `supplier_email.py` | Gemini ile profesyonel mail taslagi uretir | Guvenli sablon mail taslagi |
+| `dashboard_brief.py` | Gemini ile dogal dilde dashboard ozeti uretir | Kural tabanli ozet |
 
-Her servis Gemini hatası durumunda otomatik fallback'a düşer → uygulama asla 500 vermez.
+### AI Assistant Tool'lari
 
-### Tool Calling (agent.py)
+`ai/agent.py` Gemini'ye su tool'lari sunar:
 
+| Tool | Veri kaynagi | Cevaplayabildigi ornek sorular |
+|---|---|---|
+| `get_orders` | `orders`, `order_details`, `products`, `customers` | "What is the status of order #1?" |
+| `get_products` | `products` | "What is our most expensive product?" |
+| `get_inventory` | `products` | "Which products are low in stock?" |
+| `get_suppliers` | `suppliers`, `products` | "Which suppliers do we have?", "What are supplier phone numbers?" |
+| `get_dashboard` | aggregate DB queries | "Give me today's business summary." |
+
+Function calling akisi:
+
+```mermaid
+sequenceDiagram
+    participant UI as AI Assistant UI
+    participant API as POST /chat/
+    participant Agent as ai/agent.py
+    participant Gemini
+    participant DB as SQLite
+
+    UI->>API: User question
+    API->>Agent: run_agent(message)
+    Agent->>Gemini: Prompt + tool declarations
+    Gemini-->>Agent: function_call(get_inventory / get_suppliers / ...)
+    Agent->>DB: SQLAlchemy query
+    DB-->>Agent: JSON-like tool result
+    Agent->>Gemini: function_response
+    Gemini-->>Agent: final natural language answer
+    Agent-->>API: reply + used_tools
+    API-->>UI: Assistant answer
 ```
-User mesajı
-  ↓
-Gemini'ye gönder (4 tool tanımıyla beraber)
-  ↓
-Gemini "get_inventory tool çağır" der
-  ↓
-Python tool'u çalıştırır → DB sorgusu → JSON dön
-  ↓
-Gemini'ye sonucu geri ver
-  ↓
-Gemini doğal dilde cevap üretir
-  ↓
-Frontend'e dön (cevap + kullanılan tool listesi)
-```
 
-**Multi-tool döngü**: Gemini birden fazla tool'u peş peşe çağırabilir (max 5 iterasyon).
+Quota/high demand durumunda Gemini hata verebilir. Proje bu durumda 500 ile kirilmaz; dashboard ve supplier email servisleri fallback kullanir, AI Assistant ise kullaniciya servis gecici olarak kullanilamiyor mesajini dondurur.
 
-## Hızlı Başlangıç
+## Kritik Is Akslari
+
+### Product
+
+1. Admin veya Business Owner login olur.
+2. Products sayfasinda urunler listelenir.
+3. Add Product ile yeni urun eklenir.
+4. Update/Delete islemleri yalniz yetkili roller icin gorunur.
+
+### Order
+
+1. Admin, Business Owner veya Sales Manager siparis ekler.
+2. Siparis `Cancelled` degilse urun stogu azalir.
+3. Status, tracking number ve carrier update modalindan guncellenir.
+4. Siparis iptal edilirse stok geri yuklenir.
+
+### Inventory
+
+1. `GET /inventory` product tablosundan turetilmis stok listesini dondurur.
+2. `current_stock <= critical_level` ise urun kritik kabul edilir.
+3. Yetkili rol icin Draft Email butonu gorunur.
+4. Draft Email endpoint'i supplier bilgisiyle mail taslagi uretir.
+5. Frontend modalinda taslak gosterilir ve `Open Email` butonu mail uygulamasina aktarir.
+
+### Supplier
+
+1. Suppliers sayfasi tedarikci listesini ve bagli urunleri gosterir.
+2. Add Supplier sayfasinda tedarikci iletisim bilgileri ve bagli urunler secilir.
+3. Update modalinda email, phone ve urun baglantilari guncellenir.
+4. Delete islemi tedarikciyi silmeden once urunlerin `supplier_id` alanini bosaltir.
+
+## Hizli Baslangic
 
 ```powershell
-# 1) Bağımlılıklar
-cd HackathonProject
+cd C:\Users\onura\PycharmProjects\HackathonProject
+
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 
-# 2) .env oluştur (.env.example'dan kopyala)
 copy .env.example .env
-# .env'i editle: GOOGLE_API_KEY=...   AI_ENABLED=false/true
+# .env icinde GOOGLE_API_KEY ve AI_ENABLED degerlerini ayarla
 
-# 3) Veritabanı + örnek veri
 python -m backend.seed
-
-# 4) Çalıştır
 python -m uvicorn backend.main:app --reload
 ```
 
-Tarayıcı: **http://127.0.0.1:8000/**
-Swagger: **http://127.0.0.1:8000/docs**
+Tarayici:
 
-## Demo Kullanıcıları
+```text
+http://127.0.0.1:8000/
+```
 
-Hepsinin şifresi: `password123`
+Swagger:
 
-| Email | Rol |
-|---|---|
-| `owner@kobi.local` | Admin (her şeyi yapar) |
-| `biz@kobi.local` | Business Owner (user silme hariç her şey) |
-| `sales@kobi.local` | Sales Manager (sipariş yönetimi) |
-| `inventory@kobi.local` | Inventory Staff (stok yönetimi) |
+```text
+http://127.0.0.1:8000/docs
+```
 
-## Demo Senaryoları
+## Demo Kullanicilari
 
-### Senaryo 1 — Sabah dashboard'ı (Alan 2)
-1. Login: `owner@kobi.local`
-2. Dashboard → 5 metrik kartı + **AI Morning Brief** (Gemini'nin doğal dil yorumu)
-3. 7 ürün, 4 sipariş, 2 kritik stok görürsün
+Tum demo kullanicilarinin sifresi:
 
-### Senaryo 2 — Tedarikçi mail otomasyonu (Alan 4)
-1. Inventory → kritik stoktaki ürünler (sarı satırlar)
-2. **"Draft Email"** tıkla → Gemini'nin özelleştirilmiş mail taslağı modal'da
-3. Yönetici onaylar (demo: mail gönderme yok, sadece taslak)
+```text
+password123
+```
 
-### Senaryo 3 — Sipariş + kargo (Alan 2)
-1. Orders → "Add New Order"
-2. Müşteri bilgileri + ürün + tarih → submit
-3. Listede sipariş, stok düşmüş, estimated_delivery auto (order_date + 3 gün)
-4. Satırdaki **"Update"** → status + tracking_no + carrier güncelle
+| Email | Rol | Demo amaci |
+|---|---|---|
+| `owner@kobi.local` | Admin | Tum yetkiler |
+| `biz@kobi.local` | Business Owner | Operasyon yonetimi |
+| `sales@kobi.local` | Sales Manager | Siparis/kargo yonetimi |
+| `inventory@kobi.local` | Inventory Staff | Stok ve draft email |
 
-### Senaryo 4 — RBAC canlı (etkileyici)
-1. Logout, `sales@kobi.local` ile gir
-2. Products → liste görünür ama **"Add New Product" butonu gizli**
-3. Inventory → **"Draft Email" butonu gizli**
-4. Logout, `inventory@kobi.local` ile gir
-5. Orders → **"Update" butonu gizli**
+## Demo Senaryolari
 
-### Senaryo 5 — AI Assistant (function calling)
-1. AI Assistant → "Which products are low in stock?"
-2. Backend `POST /chat/` → `ai/agent.py` → Gemini → `get_inventory` tool çağrılır
-3. Cevap üzerinde **`[tools used: get_inventory]`** etiketi — jüriye "AI gerçekten DB'ye gitti" ispatı
+### 1. Dashboard
 
-> ⚠ **Quota notu:** Gemini free tier dakikada ~5, modele göre günde 20-1500. Demo öncesi `AI_ENABLED=false` tut, demo sırasında aç.
+1. `owner@kobi.local` ile login ol.
+2. Dashboard kartlarini goster: total products, total orders, pending orders, low stock products.
+3. AI/kural tabanli gunluk ozeti ve stok uyarisini anlat.
 
-## Teknoloji Yığını
+### 2. AI Assistant
 
-| Katman | Teknoloji |
-|--------|-----------|
-| Backend | FastAPI 0.115, Python 3.12 |
-| ORM | SQLAlchemy 2.0 |
-| DB | SQLite (demo) — Postgres'e taşınabilir |
-| Auth | JWT (python-jose) + bcrypt (passlib) + RBAC |
-| AI | Gemini 2.0 Flash via `google-genai` SDK + function calling |
-| Frontend | Bootstrap 5 + vanilla JS |
-| CORS | `fastapi.middleware.cors` |
+1. AI Assistant sayfasina git.
+2. Ornek soru: `Which suppliers do we have and what are their phone numbers?`
+3. Gemini quota uygunsa cevapta supplier bilgileri gelir.
+4. Cevap sonunda `[tools used: get_suppliers]` etiketi juriye DB tool calling'i gosterir.
+
+### 3. Kritik Stok ve Draft Email
+
+1. Inventory sayfasina git.
+2. Kritik stok urunlerinde Draft Email butonunu goster.
+3. Butona basinca modalda recipient, subject ve body alanlarini goster.
+4. Open Email ile mail uygulamasina taslak aktarimini goster.
+
+### 4. Siparis ve Kargo
+
+1. Orders sayfasina git.
+2. Add New Order ile siparis olustur.
+3. Urun stok miktarinin dustugunu anlat.
+4. Update ile status, tracking number ve carrier bilgisini guncelle.
+
+### 5. RBAC
+
+1. Sales Manager ile login ol.
+2. Products sayfasinda ekleme/silme yetkisinin olmadigini goster.
+3. Inventory sayfasinda Draft Email butonunun gizli oldugunu goster.
+4. Inventory Staff ile login olunca stok ve draft email yetkisini goster.
 
 ## API Endpoint Listesi
 
-| Method | Endpoint | Rol |
+| Method | Endpoint | Yetki |
 |---|---|---|
-| `GET` | `/health` | public |
-| `POST` | `/users` | public |
-| `POST` | `/login` | public (JSON — frontend bunu kullanır) |
-| `POST` | `/auth/token` | public (OAuth2 form-data — Swagger Authorize butonu için) |
-| `GET` | `/me` | auth |
-| `GET` | `/users` | Admin/Owner |
-| `DELETE` | `/users/{id}` | Admin |
-| `GET` | `/products` | her rol |
-| `POST` | `/products` | Admin/Owner |
-| `PUT` | `/products/{id}` | Admin/Owner |
-| `DELETE` | `/products/{id}` | Admin/Owner |
-| `GET` | `/orders` | her rol |
-| `POST` | `/orders` | Admin/Owner/Sales |
-| `PUT` | `/orders/{id}/status` | Admin/Owner/Sales |
-| `PUT` | `/orders/{id}/cancel` | Admin/Owner/Sales |
-| `GET` | `/inventory` | her rol |
-| `PUT` | `/inventory/{product_id}` | Admin/Owner/Inventory |
-| `POST` | `/inventory/products/{id}/draft-supplier-email` | Admin/Owner/Inventory |
-| `GET` | `/suppliers` | her rol |
-| `GET` | `/suppliers/{id}` | her rol |
-| `GET` | `/dashboard` | her rol |
-| `POST` | `/chat/` | public (müşteri chat) |
+| `GET` | `/health` | Public |
+| `POST` | `/users` | Public |
+| `POST` | `/login` | Public |
+| `POST` | `/auth/token` | Public / Swagger OAuth2 |
+| `GET` | `/me` | Auth |
+| `GET` | `/users` | Admin, Business Owner |
+| `DELETE` | `/users/{user_id}` | Admin |
+| `GET` | `/products` | Auth |
+| `POST` | `/products` | Admin, Business Owner |
+| `PUT` | `/products/{product_id}` | Admin, Business Owner |
+| `DELETE` | `/products/{product_id}` | Admin, Business Owner |
+| `GET` | `/orders` | Auth |
+| `POST` | `/orders` | Admin, Business Owner, Sales Manager |
+| `PUT` | `/orders/{order_id}/status` | Admin, Business Owner, Sales Manager |
+| `PUT` | `/orders/{order_id}/cancel` | Admin, Business Owner, Sales Manager |
+| `DELETE` | `/orders/{order_id}` | Admin, Business Owner, Sales Manager |
+| `GET` | `/inventory` | Auth |
+| `PUT` | `/inventory/{product_id}` | Admin, Business Owner, Inventory Staff |
+| `POST` | `/inventory/products/{product_id}/draft-supplier-email` | Admin, Business Owner, Inventory Staff |
+| `GET` | `/suppliers` | Auth |
+| `GET` | `/suppliers/{supplier_id}` | Auth |
+| `POST` | `/suppliers` | Admin, Business Owner |
+| `PUT` | `/suppliers/{supplier_id}` | Admin, Business Owner |
+| `DELETE` | `/suppliers/{supplier_id}` | Admin, Business Owner |
+| `GET` | `/dashboard` | Auth |
+| `POST` | `/chat/` | Public |
 
-Toplam: **22 endpoint** (FastAPI auto `/docs`, `/openapi.json`, `/redoc` hariç)
+Toplam: 26 endpoint. FastAPI otomatik `/docs`, `/redoc` ve `/openapi.json` endpointleri dahil degildir.
 
-## Sınırlamalar (Demo Sürümü)
+## Teknoloji Stack
 
-- Mail göndermez, taslak gösterir (gerçek SMTP entegrasyonu eklenebilir)
-- Kargo entegrasyonu simüle: `Order.status` + `tracking_no` manuel set ediliyor
-- Containerization yok — yerel uvicorn ile çalışır
-- Production için: HTTPS + secret rotasyonu + rate limit + Postgres geçişi
+| Katman | Teknoloji |
+|---|---|
+| Backend | FastAPI, Python |
+| ORM | SQLAlchemy |
+| Database | SQLite |
+| Auth | JWT, python-jose, passlib, bcrypt |
+| AI | Google Gemini, google-genai SDK, function calling |
+| Frontend | HTML, Bootstrap 5, Vanilla JavaScript |
+| Static serving | FastAPI StaticFiles |
+
+## Sunum Oncesi Kontrol Listesi
+
+- `.env` icinde `GOOGLE_API_KEY` dolu mu?
+- AI gosterilecekse `AI_ENABLED=true` mi?
+- Gemini quota/high demand riski var mi?
+- `python -m backend.seed` calistirilip demo verisi sifirlandi mi?
+- `python -m uvicorn backend.main:app --reload` calisiyor mu?
+- Tarayicida `http://127.0.0.1:8000/` aciliyor mu?
+- `owner@kobi.local / password123` ile login olunabiliyor mu?
+- Inventory ekraninda kritik stok ve Draft Email butonu gorunuyor mu?
+- Suppliers ekraninda tedarikci telefon/mail bilgileri gorunuyor mu?
+- AI Assistant cevaplarinda `[tools used: ...]` etiketi gorunuyor mu?
+
+## Bilinen Demo Sinirlari
+
+- Mail gercekten gonderilmez; modalda taslak uretilir ve `mailto:` ile kullanicinin mail uygulamasina aktarilir.
+- Kargo entegrasyonu gercek servisle bagli degildir; status, tracking number ve carrier manuel tutulur.
+- SQLite demo icin uygundur; production icin PostgreSQL onerilir.
+- Gemini free tier quota veya high demand durumunda AI Assistant cevap veremeyebilir.
+- JWT secret ve API key production ortaminda rotate edilmeli ve repo disinda tutulmalidir.

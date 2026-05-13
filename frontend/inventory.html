@@ -140,29 +140,50 @@
       </table>
     </div>
 
-    <!-- Supplier Email Draft Modal -->
-    <div class="modal fade" id="emailDraftModal" tabindex="-1">
-      <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Supplier Email Draft (AI)</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+  </main>
+
+  <!-- Supplier Email Draft Modal -->
+  <div class="modal fade" id="emailDraftModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+
+        <div class="modal-header">
+          <h5 class="modal-title">Supplier Email Draft</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+
+        <div class="modal-body">
+          <div id="emailDraftError" class="alert alert-danger d-none"></div>
+
+          <div class="mb-3">
+            <strong>To:</strong>
+            <span id="emailTo">-</span>
           </div>
-          <div class="modal-body">
-            <div class="mb-2"><strong>To:</strong> <span id="emailTo"></span></div>
-            <div class="mb-2"><strong>Subject:</strong> <span id="emailSubject"></span></div>
-            <hr>
-            <pre id="emailBody" style="white-space: pre-wrap; font-family: inherit;"></pre>
-            <div id="emailDraftError" class="alert alert-danger d-none"></div>
+
+          <div class="mb-3">
+            <strong>Subject:</strong>
+            <span id="emailSubject">-</span>
           </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+
+          <div class="mb-0">
+            <label for="emailBody" class="form-label fw-bold">Body</label>
+            <pre id="emailBody" class="bg-light border rounded p-3 mb-0 text-wrap">-</pre>
           </div>
         </div>
+
+        <div class="modal-footer">
+          <a id="emailDraftMailLink" class="btn btn-primary disabled" href="#" role="button">
+            Open Email
+          </a>
+
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            Close
+          </button>
+        </div>
+
       </div>
     </div>
-
-  </main>
+  </div>
 
   <!-- Footer -->
   <footer class="text-center py-4 bg-light mt-5">
