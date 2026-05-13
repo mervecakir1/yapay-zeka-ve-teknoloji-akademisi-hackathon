@@ -136,6 +136,17 @@ function escapeJsString(value) {
     .replace(/</g, "\\u003c");
 }
 
+function formatDate(dateString) {
+  if (!dateString) return "-";
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return dateString;
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  });
+}
+
 function getStatusClass(status) {
   if (status === "Pending") return "status-pending";
   if (status === "Preparing") return "status-preparing";
@@ -660,7 +671,7 @@ async function loadOrdersPage() {
           <td title="${escapeHtml(tooltip)}">${escapeHtml(order.customer_name)}</td>
           <td>${escapeHtml(order.product_name)}</td>
           <td>${Number(order.quantity)}</td>
-          <td>${escapeHtml(order.order_date)}</td>
+          <td>${formatDate(order.order_date)}</td>
           <td>
             <span class="status-badge ${statusClass}">
               ${escapeHtml(order.order_status)}
@@ -669,7 +680,7 @@ async function loadOrdersPage() {
           <td>$${Number(order.total_price)}</td>
           <td>${escapeHtml(order.tracking_no || "-")}</td>
           <td>${escapeHtml(order.shipping_carrier || "-")}</td>
-          <td>${escapeHtml(order.estimated_delivery || "-")}</td>
+          <td>${formatDate(order.estimated_delivery)}</td>
           <td>
             <div class="d-flex gap-2">
               ${updateBtn}
@@ -815,9 +826,10 @@ async function loadAddOrderPage() {
     `;
 
     products.forEach((product) => {
+      const productPrice = Number(String(product.price).replace(',', '.'));
       productSelect.innerHTML += `
-        <option value="${product.product_id}" data-price="${product.price}">
-          ${escapeHtml(product.product_name)} - $${Number(product.price)}
+        <option value="${product.product_id}" data-price="${productPrice}">
+          ${escapeHtml(product.product_name)} - $${productPrice}
         </option>
       `;
     });
@@ -829,11 +841,12 @@ async function loadAddOrderPage() {
 
   function updateTotalPrice() {
     const selectedOption = productSelect.options[productSelect.selectedIndex];
-    const price = Number(selectedOption?.dataset?.price || 0);
+    const priceRaw = selectedOption?.dataset?.price || "0";
+    const price = Number(String(priceRaw).replace(',', '.'));
     const quantity = Number(quantityInput.value || 0);
 
     if (price > 0 && quantity > 0) {
-      totalPriceInput.value = price * quantity;
+      totalPriceInput.value = (price * quantity).toFixed(2);
     }
   }
 
