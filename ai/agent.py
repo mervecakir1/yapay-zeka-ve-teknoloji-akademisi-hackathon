@@ -224,6 +224,30 @@ def _quota_error_reply(msg: str) -> str:
     )
 
 
+def _missing_key_error_reply(msg: str) -> str:
+    return (
+        "[AI configuration error - GOOGLE_API_KEY is missing or unreadable. "
+        "Please check your .env file.] "
+        f"Your message: \"{msg}\""
+    )
+
+
+def _generic_ai_error_reply(msg: str) -> str:
+    return (
+        "[AI service temporarily unavailable. Please try again later.] "
+        f"Your message: \"{msg}\""
+    )
+
+
+def _error_reply_from_exception(msg: str, exc: Exception) -> str:
+    err_text = str(exc).lower()
+    if "no api key" in err_text or "api key" in err_text and "provided" in err_text:
+        return _missing_key_error_reply(msg)
+    if "quota" in err_text or "rate limit" in err_text or "429" in err_text:
+        return _quota_error_reply(msg)
+    return _generic_ai_error_reply(msg)
+
+
 # ============================================================
 # MAIN ENTRY POINT
 # ============================================================
@@ -263,11 +287,11 @@ def run_agent(
         # AI aÃ§Ä±k â€” Gemini'yi dene, hata olursa quota fallback'a dÃ¼ÅŸ
         try:
             return _run_gemini_agent(db, customer_id, user_message)
-        except Exception:
+        except Exception as e:
             # GerÃ§ek hata sebebini log'la, kullanÄ±cÄ±ya graceful mesaj dÃ¶n.
             logger.exception("Gemini agent failed for customer_id=%s", customer_id)
             _save_message(db, customer_id, "user", user_message)
-            reply = _quota_error_reply(user_message)
+            reply = _error_reply_from_exception(user_message, e)
             _save_message(db, customer_id, "assistant", reply)
             return reply, []
     finally:
