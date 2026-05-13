@@ -1,4 +1,4 @@
-# SMB E-Commerce AI Assistant
+# SME E-Commerce AI Assistant
 
 KOBI'ler icin gelistirilmis yapay zeka destekli e-ticaret operasyon yonetim sistemi. Proje; urun, siparis, stok, tedarikci ve gunluk is ozeti akislari uzerinden kucuk isletmelerin operasyon takibini kolaylastirir. AI katmani Gemini function calling kullanarak veritabanindan gercek verileri okur ve kullaniciya dogal dilde cevap uretir.
 
