@@ -15,6 +15,7 @@ Contract:
 import os
 import re
 import logging
+import time
 
 from google import genai
 from google.genai import types
@@ -24,6 +25,9 @@ from backend.schemas import SupplierEmailDraft
 logger = logging.getLogger(__name__)
 
 MODEL_NAME = "gemini-flash-latest"
+EMAIL_CACHE_TTL_SECONDS = 15 * 60
+
+_EMAIL_CACHE: dict[tuple, tuple[float, SupplierEmailDraft]] = {}
 
 SYSTEM_PROMPT = """You are a procurement assistant for an SMB e-commerce business.
 Generate a short, professional email in English to a supplier requesting stock replenishment.
@@ -115,6 +119,26 @@ def _gemini_draft(
     )
 
 
+def _draft_cache_key(
+    product_id: int,
+    product_name: str,
+    current_stock: int,
+    critical_level: int,
+    supplier_name: str,
+    supplier_email: str,
+    suggested_order_qty: int,
+) -> tuple:
+    return (
+        product_id,
+        product_name,
+        current_stock,
+        critical_level,
+        supplier_name,
+        supplier_email,
+        suggested_order_qty,
+    )
+
+
 def draft_supplier_email(
     product_id: int,
     product_name: str,
@@ -130,14 +154,25 @@ def draft_supplier_email(
     """
     args = (product_id, product_name, current_stock, critical_level,
             supplier_name, supplier_email, suggested_order_qty)
+    cache_key = _draft_cache_key(*args)
+    now = time.monotonic()
+    cached = _EMAIL_CACHE.get(cache_key)
+    if cached is not None:
+        expires_at, cached_draft = cached
+        if now < expires_at:
+            return cached_draft
 
     if not _ai_enabled():
         return _template_draft(*args)
 
     try:
-        return _gemini_draft(*args)
+        draft = _gemini_draft(*args)
+        _EMAIL_CACHE[cache_key] = (now + EMAIL_CACHE_TTL_SECONDS, draft)
+        return draft
     except Exception:
         # Gemini hatası (quota, network, vb.) → güvenli template'e düş.
         # Sebebi log'ta olan gerçek bug'lar "quota" sanılmasın.
         logger.exception("Gemini supplier email draft failed; falling back to template")
-        return _template_draft(*args)
+        draft = _template_draft(*args)
+        _EMAIL_CACHE[cache_key] = (now + 60, draft)
+        return draft

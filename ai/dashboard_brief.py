@@ -13,6 +13,7 @@ Contract:
 """
 import os
 import logging
+import time
 
 from google import genai
 from google.genai import types
@@ -20,6 +21,9 @@ from google.genai import types
 logger = logging.getLogger(__name__)
 
 MODEL_NAME = "gemini-flash-latest"
+BRIEF_CACHE_TTL_SECONDS = 15 * 60
+
+_BRIEF_CACHE: dict[tuple, tuple[float, str]] = {}
 
 SYSTEM_PROMPT = """You are an operations assistant for an SMB e-commerce business.
 The user gives you today's metrics. Produce a short morning brief (3-4 sentences max)
@@ -72,18 +76,34 @@ def _gemini_brief(stats: dict) -> str:
     return (response.text or "").strip()
 
 
+def _stats_cache_key(stats: dict) -> tuple:
+    return tuple(sorted(stats.items()))
+
+
 def generate_brief(stats: dict) -> str:
     """
     Dashboard sabah özeti üretir.
     AI_ENABLED=true ise Gemini'yi dener, başarısız olursa kural-tabanlı'ya düşer.
     """
+    cache_key = _stats_cache_key(stats)
+    now = time.monotonic()
+    cached = _BRIEF_CACHE.get(cache_key)
+    if cached is not None:
+        expires_at, cached_text = cached
+        if now < expires_at:
+            return cached_text
+
     if not _ai_enabled():
         return _rule_based_brief(stats)
 
     try:
         result = _gemini_brief(stats)
-        return result if result else _rule_based_brief(stats)
+        final_text = result if result else _rule_based_brief(stats)
+        _BRIEF_CACHE[cache_key] = (now + BRIEF_CACHE_TTL_SECONDS, final_text)
+        return final_text
     except Exception:
         # Gemini hatası → güvenli fallback. Sebebi log'la ki sessizce yutmayalım.
         logger.exception("Gemini dashboard brief failed; falling back to rule-based summary")
-        return _rule_based_brief(stats)
+        fallback = _rule_based_brief(stats)
+        _BRIEF_CACHE[cache_key] = (now + 60, fallback)
+        return fallback
